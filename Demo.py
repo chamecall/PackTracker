@@ -3,6 +3,7 @@ import cv2
 from collections import deque
 import Utils
 from WorkPlace import WorkPlace
+from Yolo import Yolo
 
 CONTOUR_AREA_THRESHOLD = 3000
 MINIMUM_DISTANCE_BETWEEN_RECTANGLES = 300
@@ -16,6 +17,7 @@ work_places = (WorkPlace('Incognito', ((500, 100), (1100, 200)), 'Left', frame_s
 
 bounding_areas = [work_place.work_place_position for work_place in work_places]
 bounding_areas = Utils.combine_nearby_rects(bounding_areas)
+yolo = Yolo()
 
 
 while True:
@@ -46,9 +48,10 @@ while True:
     rectangles = Utils.combine_nearby_rects(rectangles, shift=MINIMUM_DISTANCE_BETWEEN_RECTANGLES)
     rectangles = Utils.restrict_rectangle_areas_by_another_ones(rectangles, bounding_areas)
 
-    while rectangles:
-        rectangle = rectangles.pop()
-        cv2.rectangle(frame, rectangle[0], rectangle[1], (0, 255, 0), 2)
+    for rectangle in rectangles:
+        #cv2.rectangle(frame, rectangle[0], rectangle[1], (0, 255, 0), 2)
+        detections = yolo.forward(frame[rectangle[0][1]:rectangle[1][1], rectangle[0][0]:rectangle[1][0]])
+        #print(detections)
     previous_blurred_frame = blurred_frame
 
     #cv2.imshow("Frame3: Delta", delta_frame)
