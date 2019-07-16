@@ -29,24 +29,21 @@ calculate_work_size = {
 class WorkPlace:
     WORKER_PLACE_SIZE = 300
 
-    def __init__(self, packer, table_position: tuple, packing_side, place_size=(1920, 1080)):
+    def __init__(self, packer, table_position: tuple, packing_side, frame_size=(1366, 768)):
         self.packer = packer
         self.table_position = table_position
         self.packing_side = packing_side
-        self.place_size = place_size
+        self.frame_size = frame_size
         self.work_place_position = self.define_work_place_size()
 
     def define_work_place_size(self):
         table_position_copy = [list(tpl) for tpl in self.table_position]
-        work_place_position = calculate_work_size['Left'](table_position_copy)
+        work_place_position = calculate_work_size[self.packing_side](table_position_copy)
         work_place_position[0][0] = 0 if work_place_position[0][0] < 0 else work_place_position[0][0]
         work_place_position[0][1] = 0 if work_place_position[0][1] < 0 else work_place_position[0][1]
-        work_place_position[1][0] = self.place_size[0] if work_place_position[1][0] > self.place_size[0] else \
+        work_place_position[1][0] = self.frame_size[0] if work_place_position[1][0] > self.frame_size[0] else \
         work_place_position[1][0]
-        work_place_position[1][1] = self.place_size[1] if work_place_position[1][1] > self.place_size[1] else \
+        work_place_position[1][1] = self.frame_size[1] if work_place_position[1][1] > self.frame_size[1] else \
         work_place_position[1][1]
         return tuple(tuple(lst) for lst in work_place_position)
 
-
-work_place = WorkPlace('Azimov', ((10, 10), (40, 40)), 'Left')
-print(work_place.work_place_position)
