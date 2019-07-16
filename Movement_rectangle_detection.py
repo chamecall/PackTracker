@@ -2,8 +2,8 @@ import numpy as np
 import cv2
 from collections import deque
 
-CONTOUR_AREA_THRESHOLD = 5000
-MINIMUM_DISTANCE_BETWEEN_RECTANGLES = 20
+CONTOUR_AREA_THRESHOLD = 3000
+MINIMUM_DISTANCE_BETWEEN_RECTANGLES = 300
 camera = cv2.VideoCapture('/home/algernon/samba/video_queue/omega-packaging/data/raw/boxes.avi')
 camera.set(cv2.CAP_PROP_FRAME_WIDTH, 320)
 camera.set(cv2.CAP_PROP_FRAME_HEIGHT, 240)
@@ -78,6 +78,8 @@ while True:
 
     cv2.imshow("Frame3: Delta", delta_frame)
     cv2.imshow("Frame6: Contours", frame)
+    cv2.imshow('Table only', frame[100:1080, 200:1950])
+
 
     key = cv2.waitKey(1) & 0xFF
     if key == ord('q'):
