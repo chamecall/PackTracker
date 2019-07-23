@@ -12,6 +12,18 @@ def are_rectangles_intersect(first_rectangle, second_rectangle, shift=0):
     return True
 
 
+def are_rectangle_inside_another(prob_in_rectangle, prob_out_rectangle):
+    in_xs = [point[0] for point in prob_in_rectangle]
+    in_ys = [point[1] for point in prob_in_rectangle]
+
+    out_min_x, out_max_x = min(prob_out_rectangle[0][0], prob_out_rectangle[1][0]), max(prob_out_rectangle[0][0], prob_out_rectangle[1][0])
+    out_min_y, out_max_y = min(prob_out_rectangle[0][1], prob_out_rectangle[1][1]), max(prob_out_rectangle[0][1],
+                                                                                        prob_out_rectangle[1][1])
+
+    in_xs_are_inside_out_xs = all([out_min_x <= in_x <= out_max_x for in_x in in_xs])
+    in_ys_are_inside_out_ys = all([out_min_y <= in_y <= out_max_y for in_y in in_ys])
+    return in_xs_are_inside_out_xs and in_ys_are_inside_out_ys
+
 def rectangles_intersection(rect_a, rect_b):
     min_left_x, max_left_x = min(rect_a[0][0], rect_b[0][0]), max(rect_a[0][0], rect_b[0][0])
     min_right_x, max_right_x = min(rect_a[1][0], rect_b[1][0]), max(rect_a[1][0], rect_b[1][0])

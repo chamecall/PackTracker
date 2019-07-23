@@ -5,10 +5,9 @@ import os
 import cv2
 import numpy as np
 import time
-import Darknet
 
 
-def convertBack(x, y, w, h):
+def convert_back(x, y, w, h):
     xmin = int(round(x - (w / 2)))
     xmax = int(round(x + (w / 2)))
     ymin = int(round(y - (h / 2)))
@@ -16,13 +15,13 @@ def convertBack(x, y, w, h):
     return xmin, ymin, xmax, ymax
 
 
-def cvDrawBoxes(detections, img):
+def cv_draw_boxes(detections, img):
     for detection in detections:
         x, y, w, h = detection[2][0], \
                      detection[2][1], \
                      detection[2][2], \
                      detection[2][3]
-        xmin, ymin, xmax, ymax = convertBack(
+        xmin, ymin, xmax, ymax = convert_back(
             float(x), float(y), float(w), float(h))
         pt1 = (xmin, ymin)
         pt2 = (xmax, ymax)
@@ -41,9 +40,9 @@ class Yolo:
         self.metaMain = None
         self.altNames = None
 
-        configPath = "/home/algernon/samba/video_queue/omega-packaging/experiments/exp-002-BigView/config/omega-pack-yolov3.cfg"
-        weightPath = "/home/algernon/samba/video_queue/omega-packaging/experiments/exp-002-BigView/models/omega-pack-yolov3_1000.weights"
-        metaPath = "/home/algernon/samba/video_queue/omega-packaging/experiments/exp-002-BigView/config/omega-pack.data"
+        configPath = "/home/algernon/samba/video_queue/omega-packaging/experiments/exp-001-Simple-objects-detection/config/omega-pack-yolov3.cfg"
+        weightPath = "/home/algernon/samba/video_queue/omega-packaging/experiments/exp-001-Simple-objects-detection/models/omega-pack-yolov3.saved_backup"
+        metaPath = "/home/algernon/samba/video_queue/omega-packaging/experiments/exp-001-Simple-objects-detection/config/omega-pack.data"
         if not os.path.exists(configPath):
             raise ValueError("Invalid config path `" +
                              os.path.abspath(configPath) + "`")
@@ -83,7 +82,6 @@ class Yolo:
                                                 Darknet.network_height(self.netMain), 3)
 
     def forward(self, image):
-        print(image.shape)
         frame_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         frame_resized = cv2.resize(frame_rgb,
                                    (Darknet.network_width(self.netMain),
@@ -92,8 +90,7 @@ class Yolo:
 
         Darknet.copy_image_from_bytes(self.darknet_image, frame_resized.tobytes())
         detections = Darknet.detect_image(self.netMain, self.metaMain, self.darknet_image, thresh=0.25)
-        image = cvDrawBoxes(detections, frame_resized)
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        cv2.imshow('Output', image)
+        image = cv_draw_boxes(detections, frame_resized)
+        cv2.imshow('mini result', image)
         return detections
 

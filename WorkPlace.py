@@ -29,12 +29,14 @@ calculate_work_size = {
 class WorkPlace:
     WORKER_PLACE_SIZE = 300
 
-    def __init__(self, packer, table_position: tuple, packing_side, frame_size=(1366, 768)):
+    def __init__(self, packer, table_position: tuple, packing_side, clockwise_distance_coeffs, frame_size=(1366, 768)):
         self.packer = packer
         self.table_position = table_position
         self.packing_side = packing_side
         self.frame_size = frame_size
         self.work_place_position = self.define_work_place_size()
+        self.distance_coeffs = {'tl': clockwise_distance_coeffs[0], 'tr': clockwise_distance_coeffs[1],
+                                'br': clockwise_distance_coeffs[2], 'bl': clockwise_distance_coeffs[3]}
 
     def define_work_place_size(self):
         table_position_copy = [list(tpl) for tpl in self.table_position]

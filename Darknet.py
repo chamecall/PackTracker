@@ -274,7 +274,8 @@ def detect_image(net, meta, im, thresh=.5, hier_thresh=.5, nms=.45, debug=False)
     letter_box = 0
     # predict_image_letterbox(net, im)
     # letter_box = 1
-    if debug: print("did prediction")
+    if debug:
+        print("did prediction")
     # dets = get_network_boxes(net, custom_image_bgr.shape[1], custom_image_bgr.shape[0], thresh, hier_thresh, None, 0, pnum, letter_box) # OpenCV
     dets = get_network_boxes(net, im.w, im.h, thresh, hier_thresh, None, 0, pnum, letter_box)
     if debug:
