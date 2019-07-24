@@ -99,6 +99,8 @@ class WorkPlace:
         point_distance_coeff += self.rect_table_corner_distance_coeffs['bl']
         return point_distance_coeff
 
+    def detects_parts(self):
+        pass
 
 
 
