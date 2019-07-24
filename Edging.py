@@ -103,7 +103,6 @@ def apply_info(object_rect, image, work_place):
     cv2.circle(image, (int(trbrX), int(trbrY)), 5, (255, 0, 0), -1)
 
     distance_coeff = work_place.calculate_distance_coeff_by_point(center)
-    print(distance_coeff)
 
     cv2.line(image, (int(tltrX), int(tltrY)), (int(blbrX), int(blbrY)),
              (255, 0, 255), 2)

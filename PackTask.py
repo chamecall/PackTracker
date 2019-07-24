@@ -10,6 +10,6 @@ class PackTasks():
             if item['Date'] != next_task_time:
                 break
             print(item)
-            PackTasks.append((item['Products'], item['ProductsCount'], (item['Length'], item['Height'])))
+            PackTasks.append((item['Products'], item['ProductsCount'], (item['Length'], item['Height'], item['Depth'])))
 
         return PackTasks

@@ -123,4 +123,5 @@ while True:
     cv2.waitKey(1)
 
 camera.release()
+vid_writer.release()
 cv2.destroyAllWindows()
