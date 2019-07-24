@@ -6,8 +6,10 @@ class PackTasks():
         PackTasks = []
         next_task_time = data[0]['Date']
         for item in data:
+            print(item['Date'])
             if item['Date'] != next_task_time:
                 break
-            PackTasks.append(item['Products'])
+            print(item)
+            PackTasks.append((item['Products'], item['ProductsCount'], (item['Length'], item['Height'])))
 
         return PackTasks

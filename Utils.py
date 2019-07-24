@@ -78,3 +78,5 @@ def restrict_rectangle_areas_by_another_ones(areas, bounding_areas):
             if are_rectangles_intersect(area, bounding_area):
                 final_areas.append(rectangles_intersection(area, bounding_area))
     return final_areas
+
+

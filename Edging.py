@@ -10,8 +10,7 @@ import Utils
 from collections import deque
 
 
-pixelsPerMetric = None
-width = 2.0
+
 
 def midpoint(ptA, ptB):
     return ((ptA[0] + ptB[0]) * 0.5, (ptA[1] + ptB[1]) * 0.5)
@@ -47,6 +46,10 @@ def get_clockwise_corner_points(image):
         box = perspective.order_points(box)
         cv2.drawContours(image, [box.astype("int")], -1, (0, 255, 0), 2)
 
+        M = cv2.moments(c)
+        cX = int(M["m10"] / M["m00"])
+        cY = int(M["m01"] / M["m00"])
+
         for (x, y) in box:
             cv2.circle(image, (int(x), int(y)), 5, (0, 0, 255), -1)
 
@@ -56,7 +59,7 @@ def get_clockwise_corner_points(image):
 
         (tlblX, tlblY) = midpoint(tl, bl)
         (trbrX, trbrY) = midpoint(tr, br)
-        corners.append(((tlblX, tlblY), (tltrX, tltrY), (trbrX, trbrY), (blbrX, blbrY)))
+        corners.append(((tlblX, tlblY), (tltrX, tltrY), (trbrX, trbrY), (blbrX, blbrY), (cX, cY)))
     return corners
 
 
@@ -92,13 +95,15 @@ def get_clockwise_corner_points(image):
 #     vid_writer.release()
 
 
-def apply_info(object_rect, image):
-    global pixelsPerMetric, width
-    (tlblX, tlblY), (tltrX, tltrY), (trbrX, trbrY), (blbrX, blbrY) = object_rect
+def apply_info(object_rect, image, work_place):
+    (tlblX, tlblY), (tltrX, tltrY), (trbrX, trbrY), (blbrX, blbrY), center = object_rect
     cv2.circle(image, (int(tltrX), int(tltrY)), 5, (255, 0, 0), -1)
     cv2.circle(image, (int(blbrX), int(blbrY)), 5, (255, 0, 0), -1)
     cv2.circle(image, (int(tlblX), int(tlblY)), 5, (255, 0, 0), -1)
     cv2.circle(image, (int(trbrX), int(trbrY)), 5, (255, 0, 0), -1)
+
+    distance_coeff = work_place.calculate_distance_coeff_by_point(center)
+    print(distance_coeff)
 
     cv2.line(image, (int(tltrX), int(tltrY)), (int(blbrX), int(blbrY)),
              (255, 0, 255), 2)
@@ -108,16 +113,13 @@ def apply_info(object_rect, image):
     dA = dist.euclidean((tltrX, tltrY), (blbrX, blbrY))
     dB = dist.euclidean((tlblX, tlblY), (trbrX, trbrY))
 
-    if pixelsPerMetric is None:
-        pixelsPerMetric = dB / width
+    dimA = dA * distance_coeff
+    dimB = dB * distance_coeff
 
-    dimA = dA / pixelsPerMetric
-    dimB = dB / pixelsPerMetric
-
-    cv2.putText(image, "{:.1f}pixs".format(dA),
+    cv2.putText(image, "{:.1f}mm".format(dimA),
                 (int(tltrX - 15), int(tltrY - 10)), cv2.FONT_HERSHEY_SIMPLEX,
                 0.65, (255, 255, 255), 2)
-    cv2.putText(image, "{:.1f}pixs".format(dB),
+    cv2.putText(image, "{:.1f}mm".format(dimB),
                 (int(trbrX + 10), int(trbrY)), cv2.FONT_HERSHEY_SIMPLEX,
                 0.65, (255, 255, 255), 2)
 
