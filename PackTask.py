@@ -1,21 +1,21 @@
 import DataBase
-import Part
-
-class PackTasks:
-    def __init__(self):
-        self.tasks = []
+from Part import Part
 
 
-
+class PackTask:
+    def __init__(self, part: Part, amount):
+        self.part = part
+        self.amount = amount
 
     @staticmethod
     def get_pack_tasks(db: DataBase, cur_time, packWorker):
         data = db.get_by_time_by_name(cur_time, packWorker)
-        PackTasks = []
+        pack_tasks = []
         next_task_time = data[0]['Date']
         for item in data:
             if item['Date'] != next_task_time:
                 break
-            PackTasks.append((item['Products'], item['ProductsCount'], (item['Length'], item['Depth'].split('\n')[1], item['Height'])))
+            part = Part(item['Products'].split(',')[1], int(item['Length']), int(item['Depth']), int(item['Height']), int(item['ProductsCount']))
+            pack_tasks.append(PackTask(part, int(item['ProductsCount'])))
 
-        return PackTasks
+        return pack_tasks

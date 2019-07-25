@@ -80,3 +80,5 @@ def restrict_rectangle_areas_by_another_ones(areas, bounding_areas):
     return final_areas
 
 
+def is_num_in_range(num, num_range: tuple):
+    return num_range[0] <= num <= num_range[1]

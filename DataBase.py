@@ -19,7 +19,7 @@ class DataBase:
                     self.db.insert({'№Pack': data[0], 'Date': data[1], 'WorkerName': data[2], 'Products': data[3],
                                     'ProductsCount': data[4], 'PlacesCount': data[5], 'Multiplicity': data[6],
                                     'Weight': data[7], 'GrossWeight': data[8], 'Volume': data[9], 'Length': data[10], 'Height': data[11],
-                                    'Depth': data[12]})
+                                    'Depth': data[12].split('\n')[0]})
                 self.file.close()
         except IOError:
             print(f'File {self.file_name} not found.')

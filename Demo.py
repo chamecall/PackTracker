@@ -6,11 +6,12 @@ from WorkPlace import WorkPlace
 from FRCNN import FRCNN
 import Edging
 from DataBase import DataBase
-from PackTask import PackTasks
+from PackTask import PackTask
 import sys
 from PIL import Image
 from matplotlib import cm
 from PIL import ImageFont, ImageDraw, Image
+
 
 def process_frame(frame):
     global previous_blurred_frame
@@ -29,19 +30,24 @@ def process_frame(frame):
     return dilated_frame
 
 
-def apply_tasks_on_frame(frame, cur_tasks):
+def apply_tasks_on_frame(frame, cur_tasks: list):
     im = Image.fromarray(frame)
     draw = ImageDraw.Draw(im)
 
+    def draw_text(x, y):
+
+        draw.text((x, y), f"{cur_task.part.name} ({cur_task.amount}), "
+        f"{cur_task.part.height}x{cur_task.part.width}x{cur_task.part.depth}", (0, 255, 255), font=font)
+
     y_value = 0
     for cur_task in cur_tasks[0]:
-        draw.text((5, y_value), f"{cur_task[0].split(',')[1]} ({cur_task[1]}), {'x'.join(cur_task[2])}", (0, 255, 255), font=font)
+        draw_text(5, y_value)
         y_value += line_height_size
 
     y_value = 0
     x_value = frame.shape[1] - 350
     for cur_task in cur_tasks[1]:
-        draw.text((x_value, y_value), f"{cur_task[0].split(',')[1]} ({cur_task[1]}), {'x'.join(cur_task[2])}", (0, 255, 255), font=font)
+        draw_text(x_value, y_value)
         y_value += line_height_size
 
     frame = np.asarray(im)
@@ -71,7 +77,10 @@ work_places = (WorkPlace('Муртазин Руслан Минислямович
 
 db = DataBase()
 initial_time = '01.07.2019 13:16'
-tables_tasks = [PackTasks.get_pack_tasks(db, initial_time, work_place.packer) for work_place in work_places]
+
+for work_place in work_places:
+    work_place.set_next_pack_task(PackTask.get_pack_tasks(db, initial_time, work_place.packer))
+
 line_height_size = 20
 
 bounding_areas = [list(work_place.rect_work_place_corners.values()) for work_place in work_places]
@@ -86,7 +95,7 @@ while True:
     if not captured:
         break
 
-    frame = apply_tasks_on_frame(frame, tables_tasks)
+    frame = apply_tasks_on_frame(frame, [work_place.next_pack_tasks for work_place in work_places])
 
     # processed_frame = process_frame(frame.copy())
     # contours, _ = cv2.findContours(processed_frame, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -108,16 +117,19 @@ while True:
 
     table_views = [frame[table_area['tl'][1]:table_area['br'][1], table_area['tl'][0]:table_area['br'][0]] for
                    table_area in table_areas]
-    all_object_rects = []
+    all_objects_shapes = []
     for table_view in table_views:
-        all_object_rects.append(Edging.get_clockwise_corner_points(table_view))
+        all_objects_shapes.append(Edging.get_clockwise_midside_points(table_view))
 
-    for i, table_object_rects in enumerate(all_object_rects):
+
+    for i, table_object_shapes in enumerate(all_objects_shapes):
         table_view = table_views[i]
         work_place = work_places[i]
+        part_detections = work_place.detects_parts(table_object_shapes)
+        #(part_detections)
 
-        for object_rect in table_object_rects:
-            Edging.apply_info(object_rect, table_view, work_place)
+        for object_shape in table_object_shapes:
+            Edging.apply_info(object_shape, table_view, work_place)
     cv2.imshow('frame', frame)
     vid_writer.write(frame)
     cv2.waitKey(1)

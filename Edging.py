@@ -1,22 +1,21 @@
-from scipy.spatial import distance as dist
 from imutils import perspective
 from imutils import contours
 import numpy as np
 import argparse
 import imutils
 import cv2
+
+from ObjectShape import ObjectShape
 from WorkPlace import WorkPlace
 import Utils
 from collections import deque
 
 
-
-
 def midpoint(ptA, ptB):
-    return ((ptA[0] + ptB[0]) * 0.5, (ptA[1] + ptB[1]) * 0.5)
+    return int((ptA[0] + ptB[0]) * 0.5), int((ptA[1] + ptB[1]) * 0.5)
 
 
-def get_clockwise_corner_points(image):
+def get_clockwise_midside_points(image):
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     gray = cv2.GaussianBlur(gray, (13, 13), 0)
 
@@ -59,7 +58,8 @@ def get_clockwise_corner_points(image):
 
         (tlblX, tlblY) = midpoint(tl, bl)
         (trbrX, trbrY) = midpoint(tr, br)
-        corners.append(((tlblX, tlblY), (tltrX, tltrY), (trbrX, trbrY), (blbrX, blbrY), (cX, cY)))
+
+        corners.append(ObjectShape(((tlblX, tlblY), (tltrX, tltrY), (trbrX, trbrY), (blbrX, blbrY)), (cX, cY)))
     return corners
 
 
@@ -95,33 +95,29 @@ def get_clockwise_corner_points(image):
 #     vid_writer.release()
 
 
-def apply_info(object_rect, image, work_place):
-    (tlblX, tlblY), (tltrX, tltrY), (trbrX, trbrY), (blbrX, blbrY), center = object_rect
-    cv2.circle(image, (int(tltrX), int(tltrY)), 5, (255, 0, 0), -1)
-    cv2.circle(image, (int(blbrX), int(blbrY)), 5, (255, 0, 0), -1)
-    cv2.circle(image, (int(tlblX), int(tlblY)), 5, (255, 0, 0), -1)
-    cv2.circle(image, (int(trbrX), int(trbrY)), 5, (255, 0, 0), -1)
+def apply_info(object_shape: ObjectShape, image, work_place):
 
-    distance_coeff = work_place.calculate_distance_coeff_by_point(center)
+    cv2.circle(image, object_shape.tm_point, 5, (255, 0, 0), -1)
+    cv2.circle(image, object_shape.bm_point, 5, (255, 0, 0), -1)
+    cv2.circle(image, object_shape.lm_point, 5, (255, 0, 0), -1)
+    cv2.circle(image, object_shape.rm_point, 5, (255, 0, 0), -1)
 
-    cv2.line(image, (int(tltrX), int(tltrY)), (int(blbrX), int(blbrY)),
+    distance_coeff = work_place.calculate_distance_coeff_by_point(object_shape.center)
+
+    cv2.line(image, object_shape.tm_point, object_shape.bm_point,
              (255, 0, 255), 2)
-    cv2.line(image, (int(tlblX), int(tlblY)), (int(trbrX), int(trbrY)),
+    cv2.line(image, object_shape.lm_point, object_shape.rm_point,
              (255, 0, 255), 2)
 
-    dA = dist.euclidean((tltrX, tltrY), (blbrX, blbrY))
-    dB = dist.euclidean((tlblX, tlblY), (trbrX, trbrY))
-
-    dimA = dA * distance_coeff
-    dimB = dB * distance_coeff
+    dimA = object_shape.width * distance_coeff
+    dimB = object_shape.height * distance_coeff
 
     cv2.putText(image, "{:.1f}mm".format(dimA),
-                (int(tltrX - 15), int(tltrY - 10)), cv2.FONT_HERSHEY_SIMPLEX,
+                (object_shape.tm_point[0] - 15, object_shape.tm_point[1] - 10), cv2.FONT_HERSHEY_SIMPLEX,
                 0.65, (255, 255, 255), 2)
     cv2.putText(image, "{:.1f}mm".format(dimB),
-                (int(trbrX + 10), int(trbrY)), cv2.FONT_HERSHEY_SIMPLEX,
+                (object_shape.rm_point[0] + 10, object_shape.rm_point[1]), cv2.FONT_HERSHEY_SIMPLEX,
                 0.65, (255, 255, 255), 2)
-
 
 # if __name__ == '__main__':
 #     process_video(
