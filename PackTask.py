@@ -6,6 +6,7 @@ class PackTask:
     def __init__(self, part: Part, amount):
         self.part = part
         self.amount = amount
+        self.print_pos = None
 
     @staticmethod
     def get_pack_tasks(db: DataBase, cur_time, packWorker):

@@ -5,6 +5,8 @@ import PackTask
 from PartDetection import PartDetection
 from Utils import is_num_in_range
 from scipy.spatial import distance as dist
+from PIL import ImageFont, ImageDraw, Image
+import numpy as np
 
 
 def stretch_place_to_left(rect_table_corners):
@@ -56,6 +58,7 @@ class WorkPlace:
 
         self.packing_side = packing_side
         self.frame_size = frame_size
+        self.font = ImageFont.truetype("arial.ttf", 16)
 
         self.table_corner_distance_coeffs = {'tl': table_corners_distance_coeffs[0],
                                              'tr': table_corners_distance_coeffs[1],
@@ -143,9 +146,8 @@ class WorkPlace:
                 precision = calculate_two_sizes_match_precision((object_shape.width, object_shape.height),
                                                                 (pack_task.part.width, pack_task.part.height))
                 founded_parts.append((object_shape, precision))
-            if founded_parts:
-                for founded_part in founded_parts:
-                    part_detections.append(PartDetection(pack_task.part, *founded_part))
+            for founded_part in founded_parts:
+                part_detections.append(PartDetection(pack_task.part, *founded_part))
         best_precision_detections = []
         used_parts = []
         used_object_shapes = []
@@ -161,37 +163,92 @@ class WorkPlace:
                 used_parts.append(part_detection.part)
                 used_object_shapes.append(part_detection.object_shape)
 
-        #self.update_part_detections(part_detections)
+        self.update_part_detections(part_detections)
 
         return self.part_detections
 
-
     def update_part_detections(self, new_part_detections):
+
         old_parts = [part_detection.part for part_detection in self.part_detections]
         new_parts = [new_part_detection.part for new_part_detection in new_part_detections]
-        for new_part_detection in new_part_detections:
-            new_part_old_detections_indexes = [i for i, old_part in enumerate(old_parts) if new_part_detection.part is old_part]
-            new_part_new_detection_indexes = [i for i, new_part in enumerate(new_parts) if new_part_detection.part is new_part]
-            if len(new_part_old_detections_indexes) == 0:
-                self.part_detections.append(new_part_detection)
-            elif len(new_part_old_detections_indexes) == len(new_part_new_detection_indexes):
-                for i in range(len(new_part_old_detections_indexes)):
-                    self.part_detections[i] = new_part_detections[i]
-            elif len(new_part_old_detections_indexes) > len(new_part_new_detection_indexes):
+        unique_new_parts = set(new_part_detection.part for new_part_detection in new_part_detections)
+        for unique_new_part in unique_new_parts:
+            old_detection_indexes = [i for i, old_part in enumerate(old_parts) if unique_new_part is old_part]
+            new_detection_indexes = [i for i, new_part in enumerate(new_parts) if unique_new_part is new_part]
+            if len(old_detection_indexes) == 0:
+                self.part_detections += [new_part_detections[index] for index in new_detection_indexes]
+            elif len(old_detection_indexes) == len(new_detection_indexes):
+                for i in range(len(old_detection_indexes)):
+                    self.part_detections[old_detection_indexes[i]] = new_part_detections[new_detection_indexes[i]]
+            elif len(old_detection_indexes) < len(new_detection_indexes):
+                for i in range(len(old_detection_indexes)):
+                    self.part_detections[old_detection_indexes[i]] = new_part_detections[new_detection_indexes[i]]
+                self.part_detections += [new_part_detections[index] for index in
+                                         new_detection_indexes[len(old_detection_indexes):]]
+            elif len(old_detection_indexes) > len(new_detection_indexes):
                 correspondences = []
-                for new_part_new_detection_index in new_part_new_detection_indexes:
-                    for new_part_old_detections_index in new_part_old_detections_indexes:
-                        old_part_detection = self.part_detections[new_part_old_detections_index]
-                        new_part_detection = new_part_detections[new_part_new_detection_index]
-                        correspondences.append((old_part_detection, new_part_detection, int(dist.euclidean(old_part_detection.object_shape.center,
-                                                                                                           new_part_detection.object_shape.center))))
-
+                for new_part_index_in_new_detections in new_detection_indexes:
+                    for new_part_index_in_old_detections in old_detection_indexes:
+                        old_part_detection = self.part_detections[new_part_index_in_old_detections]
+                        new_part_detection = new_part_detections[new_part_index_in_new_detections]
+                        correspondences.append(
+                            (old_part_detection, new_part_detection, new_part_index_in_old_detections,
+                             int(dist.euclidean(old_part_detection.object_shape.center,
+                                                new_part_detection.object_shape.center))))
+                # sort correspondencies by distances between centers
                 correspondences.sort(key=lambda cr: cr[2])
-                used_old_parts, used_new_parts = [], []
+                used_old_object_shapes, used_new_objects_shape = [], []
                 for correspondence in correspondences:
-                    old_part_detection = correspondence[0]
-                    new_part_detection = correspondences[0]
-                    #if not ()
+                    if len(used_old_object_shapes) == len(new_detection_indexes):
+                        break
+                    old_object_shape = correspondence[0].object_shape
+                    new_object_shape = correspondence[1].object_shape
+                    if not (old_object_shape in used_old_object_shapes or
+                            new_object_shape in used_new_objects_shape):
+                        self.part_detections[correspondence[2]] = correspondence[1]
+                        used_old_object_shapes.append(old_object_shape)
+                        used_new_objects_shape.append(new_object_shape)
+
+    def visualize_part_detections(self, image):
+        for part_detection in self.part_detections:
+            points = [part_detection.object_shape.lm_point, part_detection.object_shape.rm_point,
+                      part_detection.object_shape.tm_point, part_detection.object_shape.bm_point,
+                      part_detection.object_shape.center]
+            points = [(point[0] + self.rect_table_corners['tl'][0],
+                       point[1] + self.rect_table_corners['tl'][1]) for point in points]
+            lm_p, rm_p, tm_p, bm_p, c = points
+
+            cv2.line(image, lm_p, rm_p, (0, 0, 255))
+            cv2.line(image, tm_p, bm_p, (0, 0, 255))
+
+            print_pos = [next_pack_task.print_pos for next_pack_task in self.next_pack_tasks if next_pack_task.part is part_detection.part][0]
+            cv2.line(image, print_pos, c, (0, 255, 0))
+
+
+    def apply_tasks_on_frame(self, frame):
+        im = Image.fromarray(frame)
+        draw = ImageDraw.Draw(im)
+        line_height_size = 20
+
+        def draw_text(x, y, task):
+            draw.text((x, y), f"{task.part.name} ({task.amount}), "
+            f"{task.part.height}x{task.part.width}x{task.part.depth}", (0, 255, 255), font=self.font)
+
+        x_value, y_value = None, None
+        if self.packing_side == 'Left':
+            y_value = 0
+            x_value = 5
+        elif self.packing_side == 'Right':
+            y_value = 0
+            x_value = frame.shape[1] - 350
+        for cur_task in self.next_pack_tasks:
+            draw_text(x_value, y_value, cur_task)
+            cur_task.print_pos = (x_value, y_value)
+            y_value += line_height_size
+
+        frame = np.asarray(im)
+        return frame
+
 
 def calculate_two_sizes_match_precision(matched_object: tuple, reference: tuple):
     width_diff = abs(matched_object[0] - reference[0])

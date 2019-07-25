@@ -30,34 +30,13 @@ def process_frame(frame):
     return dilated_frame
 
 
-def apply_tasks_on_frame(frame, cur_tasks: list):
-    im = Image.fromarray(frame)
-    draw = ImageDraw.Draw(im)
 
-    def draw_text(x, y):
-
-        draw.text((x, y), f"{cur_task.part.name} ({cur_task.amount}), "
-        f"{cur_task.part.height}x{cur_task.part.width}x{cur_task.part.depth}", (0, 255, 255), font=font)
-
-    y_value = 0
-    for cur_task in cur_tasks[0]:
-        draw_text(5, y_value)
-        y_value += line_height_size
-
-    y_value = 0
-    x_value = frame.shape[1] - 350
-    for cur_task in cur_tasks[1]:
-        draw_text(x_value, y_value)
-        y_value += line_height_size
-
-    frame = np.asarray(im)
-    return frame
 
 
 CONTOUR_AREA_THRESHOLD = 3000
 MINIMUM_DISTANCE_BETWEEN_RECTANGLES = 300
 camera = cv2.VideoCapture(
-    '/home/algernon/samba/video_queue/omega-packaging/data/raw/МЕЛ 1 стол упаковки 1 _20190701-124357--20190701-144357_EDIT.avi')
+    '/home/chame/Desktop/МЕЛ 1 стол упаковки 1 _20190701-124357--20190701-144357_EDIT.avi')
 
 cap_width = int(camera.get(cv2.CAP_PROP_FRAME_WIDTH))
 cap_height = int(camera.get(cv2.CAP_PROP_FRAME_HEIGHT))
@@ -81,21 +60,20 @@ initial_time = '01.07.2019 13:16'
 for work_place in work_places:
     work_place.set_next_pack_task(PackTask.get_pack_tasks(db, initial_time, work_place.packer))
 
-line_height_size = 20
 
 bounding_areas = [list(work_place.rect_work_place_corners.values()) for work_place in work_places]
 
 table_areas = [work_place.rect_table_corners for work_place in work_places]
 bounding_areas = Utils.combine_nearby_rects(bounding_areas)
 # frcnn = FRCNN()
-font = ImageFont.truetype("arial.ttf", 16)
 
 while True:
     captured, frame = camera.read()
     if not captured:
         break
 
-    frame = apply_tasks_on_frame(frame, [work_place.next_pack_tasks for work_place in work_places])
+    for work_place in work_places:
+        frame = work_place.apply_tasks_on_frame(frame)
 
     # processed_frame = process_frame(frame.copy())
     # contours, _ = cv2.findContours(processed_frame, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -126,10 +104,10 @@ while True:
         table_view = table_views[i]
         work_place = work_places[i]
         part_detections = work_place.detects_parts(table_object_shapes)
-        #(part_detections)
+        work_place.visualize_part_detections(frame)
 
-        for object_shape in table_object_shapes:
-            Edging.apply_info(object_shape, table_view, work_place)
+        # for object_shape in table_object_shapes:
+        #     Edging.apply_info(object_shape, table_view, work_place)
     cv2.imshow('frame', frame)
     vid_writer.write(frame)
     cv2.waitKey(1)

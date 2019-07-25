@@ -43,14 +43,14 @@ def get_clockwise_midside_points(image):
         box = np.array(box, dtype="int")
 
         box = perspective.order_points(box)
-        cv2.drawContours(image, [box.astype("int")], -1, (0, 255, 0), 2)
+        #cv2.drawContours(image, [box.astype("int")], -1, (0, 255, 0), 2)
 
         M = cv2.moments(c)
         cX = int(M["m10"] / M["m00"])
         cY = int(M["m01"] / M["m00"])
 
-        for (x, y) in box:
-            cv2.circle(image, (int(x), int(y)), 5, (0, 0, 255), -1)
+        # for (x, y) in box:
+        #     cv2.circle(image, (int(x), int(y)), 5, (0, 0, 255), -1)
 
         (tl, tr, br, bl) = box
         (tltrX, tltrY) = midpoint(tl, tr)
