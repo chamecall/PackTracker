@@ -82,3 +82,6 @@ def restrict_rectangle_areas_by_another_ones(areas, bounding_areas):
 
 def is_num_in_range(num, num_range: tuple):
     return num_range[0] <= num <= num_range[1]
+
+def midpoint(ptA, ptB):
+    return int((ptA[0] + ptB[0]) * 0.5), int((ptA[1] + ptB[1]) * 0.5)

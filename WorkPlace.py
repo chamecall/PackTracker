@@ -48,6 +48,11 @@ class WorkPlace:
                               'br': (max_x, max_y)}
         return rect_table_corners
 
+    font = ImageFont.truetype("arial.ttf", 16)
+    bold_font = ImageFont.truetype("arial_bold.ttf", 16)
+    line_height_size = 20
+
+
     def __init__(self, packer, table_corners: tuple, packing_side, table_corners_distance_coeffs,
                  frame_size=(1366, 768)):
         self.next_pack_task_time = None
@@ -59,7 +64,7 @@ class WorkPlace:
 
         self.packing_side = packing_side
         self.frame_size = frame_size
-        self.font = ImageFont.truetype("arial.ttf", 16)
+
 
         self.table_corner_distance_coeffs = {'tl': table_corners_distance_coeffs[0],
                                              'tr': table_corners_distance_coeffs[1],
@@ -142,15 +147,19 @@ class WorkPlace:
 
             founded_parts = []
             for object_shape in object_shapes:
-                if (is_num_in_range(object_shape.width, acceptable_height_range) and
-                        is_num_in_range(object_shape.height, acceptable_width_range)):
-                    object_shape.width, object_shape.height = object_shape.height, object_shape.width
+                distance_coeff = self.calculate_distance_coeff_by_point(object_shape.center)
+                object_shape_width = object_shape.width * distance_coeff
+                object_shape_height = object_shape.height * distance_coeff
 
-                elif not (is_num_in_range(object_shape.width, acceptable_width_range) and
-                          is_num_in_range(object_shape.height, acceptable_height_range)):
+                if (is_num_in_range(object_shape_width, acceptable_height_range) and
+                        is_num_in_range(object_shape_height, acceptable_width_range)):
+                    object_shape_width, object_shape_height = object_shape_height, object_shape_width
+
+                elif not (is_num_in_range(object_shape_width, acceptable_width_range) and
+                          is_num_in_range(object_shape_height, acceptable_height_range)):
                     break
 
-                precision = calculate_two_sizes_match_precision((object_shape.width, object_shape.height),
+                precision = calculate_two_sizes_match_precision((object_shape_width, object_shape_height),
                                                                 (pack_task.part.width, pack_task.part.height))
                 founded_parts.append((object_shape, precision))
             for founded_part in founded_parts:
@@ -171,8 +180,17 @@ class WorkPlace:
                 used_object_shapes.append(part_detection.object_shape)
 
         self.update_part_detections(part_detections)
-
+        self.update_pack_task_statuses()
         return self.part_detections
+
+    def update_pack_task_statuses(self):
+        pack_task_parts = [pack_task_item.part for pack_task_item in self.cur_pack_task]
+        part_detections_parts = set(part_detection.part for part_detection in self.part_detections)
+        for i, pack_task_part in enumerate(pack_task_parts):
+            if pack_task_part in part_detections_parts:
+                self.cur_pack_task[i].set_status_as_detected()
+            else:
+                self.cur_pack_task[i].set_status_as_not_detected()
 
     def update_part_detections(self, new_part_detections):
 
@@ -216,30 +234,42 @@ class WorkPlace:
                         used_old_object_shapes.append(old_object_shape)
                         used_new_objects_shape.append(new_object_shape)
 
-    def visualize_part_detections(self, image):
+
+    def visualize_part_detections(self, image):        #cv2.drawContours(image, [box.astype("int")], -1, (0, 255, 0), 2)
+
         for part_detection in self.part_detections:
-            points = [part_detection.object_shape.lm_point, part_detection.object_shape.rm_point,
-                      part_detection.object_shape.tm_point, part_detection.object_shape.bm_point,
-                      part_detection.object_shape.center]
+            shape = part_detection.object_shape
+            points = [*shape.points, shape.center, shape.tm_point, shape.rm_point]
             points = [(point[0] + self.rect_table_corners['tl'][0],
                        point[1] + self.rect_table_corners['tl'][1]) for point in points]
-            lm_p, rm_p, tm_p, bm_p, c = points
 
-            cv2.line(image, lm_p, rm_p, (0, 0, 255))
-            cv2.line(image, tm_p, bm_p, (0, 0, 255))
+            arr = np.asarray(points[:-3]).astype('int')
+            cv2.drawContours(image, [arr], -1, (0, 255, 0), 2)
+
+            distance_coeff = self.calculate_distance_coeff_by_point(shape.center)
+            real_width = shape.width * distance_coeff
+            real_height = shape.height * distance_coeff
+
+
+            def putText(x, y, value: float):
+                cv2.putText(image, f'{int(value)}', (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.65, (255, 0, 0), 2)
+
+            putText(points[5][0] - 15,  points[5][1] - 10, real_width)
+            putText(points[6][0] + 10, points[6][1], real_height)
 
             print_pos = [next_pack_task.print_pos for next_pack_task in self.cur_pack_task if
                          next_pack_task.part is part_detection.part][0]
-            cv2.line(image, print_pos, c, (0, 255, 0))
+            cv2.line(image, (print_pos[0], int(print_pos[1] + WorkPlace.line_height_size / 2)), points[-3], (255, 255, 255))
+
 
     def apply_tasks_on_frame(self, frame):
         im = Image.fromarray(frame)
         draw = ImageDraw.Draw(im)
-        line_height_size = 20
 
-        def draw_text(x, y, task):
+        def draw_text(x, y, task, is_bold=False):
+            font = WorkPlace.bold_font if is_bold else WorkPlace.font
             draw.text((x, y), f"{task.part.name} ({task.amount}), "
-            f"{task.part.height}x{task.part.width}x{task.part.depth}", (0, 255, 255), font=self.font)
+            f"{task.part.height}x{task.part.width}x{task.part.depth}", (0, 255, 255), font=font)
 
         x_value, y_value = None, None
         if self.packing_side == 'Left':
@@ -249,9 +279,12 @@ class WorkPlace:
             y_value = 0
             x_value = frame.shape[1] - 350
         for cur_task in self.cur_pack_task:
-            draw_text(x_value, y_value, cur_task)
+            bold = False
+            if cur_task.is_detected():
+                bold = True
+            draw_text(x_value, y_value, cur_task, is_bold=bold)
             cur_task.print_pos = (x_value, y_value)
-            y_value += line_height_size
+            y_value += WorkPlace.line_height_size
 
         frame = np.asarray(im)
         return frame

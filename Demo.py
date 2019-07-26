@@ -12,7 +12,7 @@ from PIL import Image
 from matplotlib import cm
 from PIL import ImageFont, ImageDraw, Image
 from datetime import datetime, timedelta
-
+import argparse
 
 def process_frame(frame):
     global previous_blurred_frame
@@ -60,7 +60,7 @@ def initialize_work_places():
     work_places = (WorkPlace('Муртазин Руслан Минислямович', ((563, 200), (1072, 200), (1057, 978), (505, 958)), 'Left',
                              (2.1, 2.2, 1.9, 1.8),
                              frame_size=(1920, 1080)),
-                   WorkPlace('Бакшеев Александр Николаевич', ((1132, 214), (1605, 240), (1627, 1061), (1146, 1043)),
+                   WorkPlace('Бакшеев Александр Николаевич', ((1300, 214), (1605, 240), (1627, 1061), (1300, 1043)),
                              'Right', (2.2, 2.3, 2.0, 1.9),
                              frame_size=(1920, 1080)))
 
@@ -75,12 +75,16 @@ def initialize_work_places():
     return work_places
 
 
+parser = argparse.ArgumentParser()
+parser.add_argument('-i', dest='input_video', help='Input video file')
+args = parser.parse_args()
+
+
 CONTOUR_AREA_THRESHOLD = 3000
 MINIMUM_DISTANCE_BETWEEN_RECTANGLES = 300
 time_format = '%d.%m.%Y %H:%M:%S'
 
-camera = cv2.VideoCapture(
-    '/home/algernon/samba/video_queue/omega-packaging/data/raw/МЕЛ 1 стол упаковки 1 _20190701-124357--20190701-144357_EDIT.avi')
+camera = cv2.VideoCapture(args.input_video)
 
 cap_width = int(camera.get(cv2.CAP_PROP_FRAME_WIDTH))
 cap_height = int(camera.get(cv2.CAP_PROP_FRAME_HEIGHT))
@@ -106,6 +110,8 @@ while True:
     if not captured:
         break
 
+    #cv2.imshow('part of table', frame[214:1061, 1300:1627])
+
     for work_place in work_places:
         if current_time == work_place.next_pack_task_time:
             cur_task, next_task_time = PackTask.get_pack_tasks(db, format_time_to_str(current_time)[:-3],
@@ -113,8 +119,6 @@ while True:
             work_place.set_cur_pack_task(cur_task)
             work_place.set_next_pack_task_time(format_time_from_str(next_task_time))
             work_place.reset_part_detections()
-            cv2.putText(frame, 'x', (90, 150), cv2.FONT_HERSHEY_SIMPLEX, 7,
-                        (0, 0, 255), 2)
 
     # print out time
     cv2.putText(frame, format_time_to_str(current_time), (90, 150), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (255, 255, 255), 2)
