@@ -11,6 +11,7 @@ import sys
 from PIL import Image
 from matplotlib import cm
 from PIL import ImageFont, ImageDraw, Image
+from datetime import datetime, timedelta
 
 
 def process_frame(frame):
@@ -30,47 +31,93 @@ def process_frame(frame):
     return dilated_frame
 
 
+def update_time():
+    global fps, current_time
+    update_time.frame_num += 1
 
+    if update_time.frame_num >= fps:
+        current_time += timedelta(seconds=1)
+        update_time.frame_num = update_time.frame_num % fps
+
+
+update_time.frame_num = 0
+
+
+def format_time_from_str(str_time):
+    return datetime.strptime(str_time, time_format)
+
+
+def format_time_to_str(time: datetime):
+    return time.strftime(time_format)
+
+
+def initialize_work_places():
+
+    def set_work_place_task(work_place, task, next_task_time):
+        work_place.set_cur_pack_task(task)
+        work_place.set_next_pack_task_time(format_time_from_str(next_task_time))
+
+    work_places = (WorkPlace('Муртазин Руслан Минислямович', ((563, 200), (1072, 200), (1057, 978), (505, 958)), 'Left',
+                             (2.1, 2.2, 1.9, 1.8),
+                             frame_size=(1920, 1080)),
+                   WorkPlace('Бакшеев Александр Николаевич', ((1132, 214), (1605, 240), (1627, 1061), (1146, 1043)),
+                             'Right', (2.2, 2.3, 2.0, 1.9),
+                             frame_size=(1920, 1080)))
+
+    cur_task, next_task_time = PackTask.get_pack_tasks(db, '01.07.2019 13:16',
+                                                       work_places[0].packer)
+    set_work_place_task(work_places[0], cur_task, next_task_time)
+
+    cur_task, next_task_time = PackTask.get_pack_tasks(db, '01.07.2019 13:08',
+                                                       work_places[1].packer)
+    set_work_place_task(work_places[1], cur_task, next_task_time)
+
+    return work_places
 
 
 CONTOUR_AREA_THRESHOLD = 3000
 MINIMUM_DISTANCE_BETWEEN_RECTANGLES = 300
+time_format = '%d.%m.%Y %H:%M:%S'
+
 camera = cv2.VideoCapture(
-    '/home/chame/Desktop/МЕЛ 1 стол упаковки 1 _20190701-124357--20190701-144357_EDIT.avi')
+    '/home/algernon/samba/video_queue/omega-packaging/data/raw/МЕЛ 1 стол упаковки 1 _20190701-124357--20190701-144357_EDIT.avi')
 
 cap_width = int(camera.get(cv2.CAP_PROP_FRAME_WIDTH))
 cap_height = int(camera.get(cv2.CAP_PROP_FRAME_HEIGHT))
-fps = camera.get(cv2.CAP_PROP_FPS)
-vid_writer = cv2.VideoWriter('edge_output.avi', cv2.VideoWriter_fourcc(*"XVID"), fps / 3,
+fps = camera.get(cv2.CAP_PROP_FPS) / 3
+vid_writer = cv2.VideoWriter('edge_output.avi', cv2.VideoWriter_fourcc(*"XVID"), fps,
                              (cap_width, cap_height))
 cv2.namedWindow("frame", cv2.WND_PROP_FULLSCREEN)
 cv2.setWindowProperty("frame", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
 previous_blurred_frame = None
 
-work_places = (WorkPlace('Муртазин Руслан Минислямович', ((563, 200), (1072, 200), (1057, 978), (505, 958)), 'Left',
-                         (2.1, 2.2, 1.9, 1.8),
-                         frame_size=(1920, 1080)),
-               WorkPlace('Бакшеев Александр Николаевич', ((1132, 214), (1605, 240), (1627, 1061), (1146, 1043)),
-                         'Right', (2.2, 2.3, 2.0, 1.9),
-                         frame_size=(1920, 1080)))
-
 db = DataBase()
-initial_time = '01.07.2019 13:16'
+current_time = format_time_from_str('01.07.2019 13:16:33')
 
-for work_place in work_places:
-    work_place.set_next_pack_task(PackTask.get_pack_tasks(db, initial_time, work_place.packer))
-
-
-bounding_areas = [list(work_place.rect_work_place_corners.values()) for work_place in work_places]
+work_places = initialize_work_places()
+# bounding_areas = [list(work_place.rect_work_place_corners.values()) for work_place in work_places]
 
 table_areas = [work_place.rect_table_corners for work_place in work_places]
-bounding_areas = Utils.combine_nearby_rects(bounding_areas)
+# bounding_areas = Utils.combine_nearby_rects(bounding_areas)
 # frcnn = FRCNN()
 
 while True:
     captured, frame = camera.read()
     if not captured:
         break
+
+    for work_place in work_places:
+        if current_time == work_place.next_pack_task_time:
+            cur_task, next_task_time = PackTask.get_pack_tasks(db, format_time_to_str(current_time)[:-3],
+                                                               work_place.packer)
+            work_place.set_cur_pack_task(cur_task)
+            work_place.set_next_pack_task_time(format_time_from_str(next_task_time))
+            work_place.reset_part_detections()
+            cv2.putText(frame, 'x', (90, 150), cv2.FONT_HERSHEY_SIMPLEX, 7,
+                        (0, 0, 255), 2)
+
+    # print out time
+    cv2.putText(frame, format_time_to_str(current_time), (90, 150), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (255, 255, 255), 2)
 
     for work_place in work_places:
         frame = work_place.apply_tasks_on_frame(frame)
@@ -99,7 +146,6 @@ while True:
     for table_view in table_views:
         all_objects_shapes.append(Edging.get_clockwise_midside_points(table_view))
 
-
     for i, table_object_shapes in enumerate(all_objects_shapes):
         table_view = table_views[i]
         work_place = work_places[i]
@@ -111,6 +157,7 @@ while True:
     cv2.imshow('frame', frame)
     vid_writer.write(frame)
     cv2.waitKey(1)
+    update_time()
 
 camera.release()
 vid_writer.release()

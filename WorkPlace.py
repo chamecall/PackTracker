@@ -50,8 +50,9 @@ class WorkPlace:
 
     def __init__(self, packer, table_corners: tuple, packing_side, table_corners_distance_coeffs,
                  frame_size=(1366, 768)):
+        self.next_pack_task_time = None
         self.part_detections = []
-        self.next_pack_tasks = None
+        self.cur_pack_task = None
         self.packer = packer
         self.table_corners = {'tl': table_corners[0], 'tr': table_corners[1],
                               'br': table_corners[2], 'bl': table_corners[3]}
@@ -90,8 +91,14 @@ class WorkPlace:
 
         return rect_tb_coeffs
 
-    def set_next_pack_task(self, next_pack_task: PackTask):
-        self.next_pack_tasks = next_pack_task
+    def set_cur_pack_task(self, cur_pack_task):
+        self.cur_pack_task = cur_pack_task
+
+    def set_next_pack_task_time(self, next_pack_task_time):
+        self.next_pack_task_time = next_pack_task_time
+
+    def reset_part_detections(self):
+        self.part_detections = []
 
     def define_work_place_corners(self):
         rect_table_corners_copy = copy.deepcopy(self.rect_table_corners)
@@ -123,7 +130,7 @@ class WorkPlace:
     def detects_parts(self, object_shapes: list, precision_threshold=0.8):
         part_detections = []
 
-        for pack_task in self.next_pack_tasks:
+        for pack_task in self.cur_pack_task:
             acceptable_width_deviation = int(pack_task.part.width * (1 - precision_threshold))
             acceptable_width_range = (
                 pack_task.part.width - acceptable_width_deviation, pack_task.part.width + acceptable_width_deviation)
@@ -221,9 +228,9 @@ class WorkPlace:
             cv2.line(image, lm_p, rm_p, (0, 0, 255))
             cv2.line(image, tm_p, bm_p, (0, 0, 255))
 
-            print_pos = [next_pack_task.print_pos for next_pack_task in self.next_pack_tasks if next_pack_task.part is part_detection.part][0]
+            print_pos = [next_pack_task.print_pos for next_pack_task in self.cur_pack_task if
+                         next_pack_task.part is part_detection.part][0]
             cv2.line(image, print_pos, c, (0, 255, 0))
-
 
     def apply_tasks_on_frame(self, frame):
         im = Image.fromarray(frame)
@@ -241,7 +248,7 @@ class WorkPlace:
         elif self.packing_side == 'Right':
             y_value = 0
             x_value = frame.shape[1] - 350
-        for cur_task in self.next_pack_tasks:
+        for cur_task in self.cur_pack_task:
             draw_text(x_value, y_value, cur_task)
             cur_task.print_pos = (x_value, y_value)
             y_value += line_height_size

@@ -62,7 +62,7 @@ def get_real_coordinates(ratio, x1, y1, x2, y2):
 
 
 class FRCNN:
-    def __init__(self, num_rois=32, config_filename='config.pickle', network='vgg', write=True, load=None):
+    def __init__(self, num_rois=32, config_filename='config.pickle', network='vgg', write=False, load=None):
 
         config_output_filename = config_filename
         self.write = write
