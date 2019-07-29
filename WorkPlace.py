@@ -105,8 +105,9 @@ class WorkPlace:
     def set_next_pack_task_time(self, next_pack_task_time):
         self.next_pack_task_time = next_pack_task_time
 
-    def reset_part_detections(self):
-        self.part_detections = []
+    def reset_pack_task(self):
+        self.part_detections.clear()
+        self.part_tracker = PartTracker()
 
     def define_work_place_corners(self):
         rect_table_corners_copy = copy.deepcopy(self.rect_table_corners)
@@ -140,7 +141,7 @@ class WorkPlace:
         best_precision_detections = self.part_detector.detect(self.cur_pack_task, object_shapes, self.calculate_distance_coeff_by_point)
         self.part_detections = self.part_tracker.update(best_precision_detections)
         self.update_pack_task_statuses()
-        return self.part_detections
+
 
     def update_pack_task_statuses(self):
         pack_task_parts = [pack_task_item.part for pack_task_item in self.cur_pack_task]

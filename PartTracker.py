@@ -31,7 +31,7 @@ class PartTracker:
                 if self.disappeared[objectID] > self.maxDisappeared:
                     self.deregister(objectID)
 
-            return self.objects.values()
+            return list(self.objects.values())
 
 
         if len(self.objects) == 0:
@@ -76,4 +76,4 @@ class PartTracker:
                 for col in unusedCols:
                     self.register(input_part_detections[col])
 
-        return self.objects.values()
+        return list(self.objects.values())

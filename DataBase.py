@@ -44,7 +44,7 @@ class DataBase:
         data = []
         try:
             next_pack_row = self.db.get((where('WorkerName') == name) & (where('Date') >= cur_time))
-            if (next_pack_row != None):
+            if next_pack_row != None:
                 data = self.db.search((where('Date') >= next_pack_row['Date']) & (where('WorkerName') == name))
         except:
             print("Search Error")

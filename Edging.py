@@ -14,7 +14,7 @@ from collections import deque
 
 
 
-def get_clockwise_midside_points(image):
+def get_contours(image):
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     gray = cv2.GaussianBlur(gray, (13, 13), 0)
 

@@ -36,5 +36,4 @@ class PackTask:
             part = Part(item['Products'].split(',')[1], int(item['Length']), int(item['Depth']), int(item['Height']),
                         int(item['ProductsCount']))
             pack_tasks.append(PackTask(part, int(item['ProductsCount'])))
-
-        return pack_tasks, f'{next_task_time}:00'
+        return pack_tasks, f'{next_task_time}'
