@@ -8,6 +8,7 @@ from scipy.spatial import distance as dist
 from PIL import ImageFont, ImageDraw, Image
 import numpy as np
 from PartTracker import PartTracker
+from PartDetector import PartDetector
 
 def stretch_place_to_left(rect_table_corners):
     rect_table_corners['tl'][0] -= WorkPlace.WORKER_PLACE_SIZE
@@ -56,6 +57,7 @@ class WorkPlace:
     def __init__(self, packer, table_corners: tuple, packing_side, table_corners_distance_coeffs,
                  frame_size=(1366, 768)):
         self.part_tracker = PartTracker()
+        self.part_detector = PartDetector()
         self.next_pack_task_time = None
         self.part_detections = []
         self.cur_pack_task = None
@@ -133,54 +135,9 @@ class WorkPlace:
         point_distance_coeff += self.rect_table_corner_distance_coeffs['bl']
         return point_distance_coeff
 
-    def detects_parts(self, object_shapes: list, precision_threshold=0.8):
-        part_detections = []
+    def detects_parts(self, object_shapes: list):
 
-        for pack_task in self.cur_pack_task:
-            # define acceptable aspects deviations by the threshold value
-            acceptable_width_deviation = int(pack_task.part.width * (1 - precision_threshold))
-            acceptable_width_range = (
-                pack_task.part.width - acceptable_width_deviation, pack_task.part.width + acceptable_width_deviation)
-
-            acceptable_height_deviation = int(pack_task.part.height * (1 - precision_threshold))
-            acceptable_height_range = (
-                pack_task.part.height - acceptable_height_deviation,
-                pack_task.part.height + acceptable_height_deviation)
-
-            founded_parts = []
-            for object_shape in object_shapes:
-                distance_coeff = self.calculate_distance_coeff_by_point(object_shape.center)
-                object_shape_width = object_shape.width * distance_coeff
-                object_shape_height = object_shape.height * distance_coeff
-
-                if (is_num_in_range(object_shape_width, acceptable_height_range) and
-                        is_num_in_range(object_shape_height, acceptable_width_range)):
-                    object_shape_width, object_shape_height = object_shape_height, object_shape_width
-
-                elif not (is_num_in_range(object_shape_width, acceptable_width_range) and
-                          is_num_in_range(object_shape_height, acceptable_height_range)):
-                    break
-
-                precision = calculate_two_sizes_match_precision((object_shape_width, object_shape_height),
-                                                                (pack_task.part.width, pack_task.part.height))
-                founded_parts.append((object_shape, precision))
-            for founded_part in founded_parts:
-                part_detections.append(PartDetection(pack_task.part, *founded_part))
-        best_precision_detections = []
-        used_parts = []
-        used_object_shapes = []
-        # sort in desc by precision
-        part_detections.sort(reverse=True, key=lambda detection: detection.precision)
-
-        for part_detection in part_detections:
-            the_part_amount = part_detection.part.multiplicity
-            the_part_used_amount = sum([1 for used_part in used_parts if used_part is part_detection.part])
-            if not (the_part_used_amount == the_part_amount or
-                    part_detection.object_shape in used_object_shapes):
-                best_precision_detections.append(part_detection)
-                used_parts.append(part_detection.part)
-                used_object_shapes.append(part_detection.object_shape)
-
+        best_precision_detections = self.part_detector.detect(self.cur_pack_task, object_shapes, self.calculate_distance_coeff_by_point)
         self.part_detections = self.part_tracker.update(best_precision_detections)
         self.update_pack_task_statuses()
         return self.part_detections
