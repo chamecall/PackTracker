@@ -3,11 +3,11 @@ import math
 import cv2
 import PackTask
 from PartDetection import PartDetection
-from Utils import is_num_in_range
+from Utils import is_num_in_range, calculate_two_sizes_match_precision
 from scipy.spatial import distance as dist
 from PIL import ImageFont, ImageDraw, Image
 import numpy as np
-
+from PartTracker import PartTracker
 
 def stretch_place_to_left(rect_table_corners):
     rect_table_corners['tl'][0] -= WorkPlace.WORKER_PLACE_SIZE
@@ -55,6 +55,7 @@ class WorkPlace:
 
     def __init__(self, packer, table_corners: tuple, packing_side, table_corners_distance_coeffs,
                  frame_size=(1366, 768)):
+        self.part_tracker = PartTracker()
         self.next_pack_task_time = None
         self.part_detections = []
         self.cur_pack_task = None
@@ -136,6 +137,7 @@ class WorkPlace:
         part_detections = []
 
         for pack_task in self.cur_pack_task:
+            # define acceptable aspects deviations by the threshold value
             acceptable_width_deviation = int(pack_task.part.width * (1 - precision_threshold))
             acceptable_width_range = (
                 pack_task.part.width - acceptable_width_deviation, pack_task.part.width + acceptable_width_deviation)
@@ -167,9 +169,9 @@ class WorkPlace:
         best_precision_detections = []
         used_parts = []
         used_object_shapes = []
-        # sort by precision desc
+        # sort in desc by precision
         part_detections.sort(reverse=True, key=lambda detection: detection.precision)
-        # not handled cases with equal precisions
+
         for part_detection in part_detections:
             the_part_amount = part_detection.part.multiplicity
             the_part_used_amount = sum([1 for used_part in used_parts if used_part is part_detection.part])
@@ -179,7 +181,7 @@ class WorkPlace:
                 used_parts.append(part_detection.part)
                 used_object_shapes.append(part_detection.object_shape)
 
-        self.update_part_detections(part_detections)
+        self.part_detections = self.part_tracker.update(best_precision_detections)
         self.update_pack_task_statuses()
         return self.part_detections
 
@@ -191,49 +193,6 @@ class WorkPlace:
                 self.cur_pack_task[i].set_status_as_detected()
             else:
                 self.cur_pack_task[i].set_status_as_not_detected()
-
-    def update_part_detections(self, new_part_detections):
-
-        old_parts = [part_detection.part for part_detection in self.part_detections]
-        new_parts = [new_part_detection.part for new_part_detection in new_part_detections]
-        unique_new_parts = set(new_part_detection.part for new_part_detection in new_part_detections)
-        for unique_new_part in unique_new_parts:
-            old_detection_indexes = [i for i, old_part in enumerate(old_parts) if unique_new_part is old_part]
-            new_detection_indexes = [i for i, new_part in enumerate(new_parts) if unique_new_part is new_part]
-            if len(old_detection_indexes) == 0:
-                self.part_detections += [new_part_detections[index] for index in new_detection_indexes]
-            elif len(old_detection_indexes) == len(new_detection_indexes):
-                for i in range(len(old_detection_indexes)):
-                    self.part_detections[old_detection_indexes[i]] = new_part_detections[new_detection_indexes[i]]
-            elif len(old_detection_indexes) < len(new_detection_indexes):
-                for i in range(len(old_detection_indexes)):
-                    self.part_detections[old_detection_indexes[i]] = new_part_detections[new_detection_indexes[i]]
-                self.part_detections += [new_part_detections[index] for index in
-                                         new_detection_indexes[len(old_detection_indexes):]]
-            elif len(old_detection_indexes) > len(new_detection_indexes):
-                correspondences = []
-                for new_part_index_in_new_detections in new_detection_indexes:
-                    for new_part_index_in_old_detections in old_detection_indexes:
-                        old_part_detection = self.part_detections[new_part_index_in_old_detections]
-                        new_part_detection = new_part_detections[new_part_index_in_new_detections]
-                        correspondences.append(
-                            (old_part_detection, new_part_detection, new_part_index_in_old_detections,
-                             int(dist.euclidean(old_part_detection.object_shape.center,
-                                                new_part_detection.object_shape.center))))
-                # sort correspondencies by distances between centers
-                correspondences.sort(key=lambda cr: cr[2])
-                used_old_object_shapes, used_new_objects_shape = [], []
-                for correspondence in correspondences:
-                    if len(used_old_object_shapes) == len(new_detection_indexes):
-                        break
-                    old_object_shape = correspondence[0].object_shape
-                    new_object_shape = correspondence[1].object_shape
-                    if not (old_object_shape in used_old_object_shapes or
-                            new_object_shape in used_new_objects_shape):
-                        self.part_detections[correspondence[2]] = correspondence[1]
-                        used_old_object_shapes.append(old_object_shape)
-                        used_new_objects_shape.append(new_object_shape)
-
 
     def visualize_part_detections(self, image):        #cv2.drawContours(image, [box.astype("int")], -1, (0, 255, 0), 2)
 
@@ -290,12 +249,4 @@ class WorkPlace:
         return frame
 
 
-def calculate_two_sizes_match_precision(matched_object: tuple, reference: tuple):
-    width_diff = abs(matched_object[0] - reference[0])
-    height_diff = abs(matched_object[1] - reference[1])
 
-    if width_diff >= height_diff:
-        precision = width_diff / reference[0]
-    else:
-        precision = height_diff / reference[1]
-    return int((1 - precision) * 100) / 100

@@ -16,13 +16,15 @@ def are_rectangle_inside_another(prob_in_rectangle, prob_out_rectangle):
     in_xs = [point[0] for point in prob_in_rectangle]
     in_ys = [point[1] for point in prob_in_rectangle]
 
-    out_min_x, out_max_x = min(prob_out_rectangle[0][0], prob_out_rectangle[1][0]), max(prob_out_rectangle[0][0], prob_out_rectangle[1][0])
+    out_min_x, out_max_x = min(prob_out_rectangle[0][0], prob_out_rectangle[1][0]), max(prob_out_rectangle[0][0],
+                                                                                        prob_out_rectangle[1][0])
     out_min_y, out_max_y = min(prob_out_rectangle[0][1], prob_out_rectangle[1][1]), max(prob_out_rectangle[0][1],
                                                                                         prob_out_rectangle[1][1])
 
     in_xs_are_inside_out_xs = all([out_min_x <= in_x <= out_max_x for in_x in in_xs])
     in_ys_are_inside_out_ys = all([out_min_y <= in_y <= out_max_y for in_y in in_ys])
     return in_xs_are_inside_out_xs and in_ys_are_inside_out_ys
+
 
 def rectangles_intersection(rect_a, rect_b):
     min_left_x, max_left_x = min(rect_a[0][0], rect_b[0][0]), max(rect_a[0][0], rect_b[0][0])
@@ -32,6 +34,7 @@ def rectangles_intersection(rect_a, rect_b):
     min_right_y, max_right_y = min(rect_a[1][1], rect_b[1][1]), max(rect_a[1][1], rect_b[1][1])
 
     return (max_left_x, max_left_y), (min_right_x, min_right_y)
+
 
 def combine_nearby_rects(rectangles, shift=0):
     if not rectangles:
@@ -65,6 +68,7 @@ def combine_nearby_rects(rectangles, shift=0):
         rectangles.append(base_rectangle)
     return list(rectangles)
 
+
 def restrict_rectangle_areas_by_another_ones(areas, bounding_areas):
     if not areas:
         return []
@@ -82,6 +86,18 @@ def restrict_rectangle_areas_by_another_ones(areas, bounding_areas):
 
 def is_num_in_range(num, num_range: tuple):
     return num_range[0] <= num <= num_range[1]
+
+
+def calculate_two_sizes_match_precision(matched_object: tuple, reference: tuple):
+    width_diff = abs(matched_object[0] - reference[0])
+    height_diff = abs(matched_object[1] - reference[1])
+
+    if width_diff >= height_diff:
+        precision = width_diff / reference[0]
+    else:
+        precision = height_diff / reference[1]
+    return int((1 - precision) * 100) / 100
+
 
 def midpoint(ptA, ptB):
     return int((ptA[0] + ptB[0]) * 0.5), int((ptA[1] + ptB[1]) * 0.5)

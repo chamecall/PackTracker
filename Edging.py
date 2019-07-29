@@ -44,12 +44,10 @@ def get_clockwise_midside_points(image):
 
         box = perspective.order_points(box)
 
-        M = cv2.moments(c)
-        center = int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"])
 
         (tl, tr, br, bl) = box
 
-        corners.append(ObjectShape((tl, tr, br, bl), center))
+        corners.append(ObjectShape((tl, tr, br, bl)))
     return corners
 
 
