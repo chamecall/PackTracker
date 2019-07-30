@@ -9,7 +9,7 @@ class DataBase:
         self.encoding = 'utf-8'
         self.file = None
         self.sort_field = None
-        self.load_file_in_db()
+        #self.load_file_in_db()
 
     def load_file_in_db(self):
         try:

@@ -15,6 +15,12 @@ class ObjectShape:
         ys = [point[1] for point in self.points]
         min_y, max_y = min(ys), max(ys)
 
+        rect_tl_point = (min_x, min_y)
+        rect_width, rect_height = max_x - min_x, max_y - min_y
+        self.rect_box = *rect_tl_point, rect_width, rect_height
+
+        self.rect_box_center = tuple([self.rect_box[i] + self.rect_box[i + 2] / 2 for i in range(2)])
+
         self.center = int((min_x + max_x) / 2), int((min_y + max_y) / 2)
 
         self.lm_point = midpoint(self.tl_point, self.bl_point)

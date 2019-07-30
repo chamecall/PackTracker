@@ -10,16 +10,18 @@ class PartDetector:
         part_detections = []
         best_precision_detections = []
 
-        for pack_task in pack_tasks:
-            # define acceptable aspects deviations by the threshold value
-            acceptable_width_deviation = int(pack_task.part.width * (1 - self.precision_threshold))
-            acceptable_width_range = (
-                pack_task.part.width - acceptable_width_deviation, pack_task.part.width + acceptable_width_deviation)
+        desired_parts = [pack_task.part for pack_task in pack_tasks if not pack_task.is_detected()]
 
-            acceptable_height_deviation = int(pack_task.part.height * (1 - self.precision_threshold))
+        for desired_part in desired_parts:
+            # define acceptable aspects deviations by the threshold value
+            acceptable_width_deviation = int(desired_part.width * (1 - self.precision_threshold))
+            acceptable_width_range = (
+                desired_part.width - acceptable_width_deviation, desired_part.width + acceptable_width_deviation)
+
+            acceptable_height_deviation = int(desired_part.height * (1 - self.precision_threshold))
             acceptable_height_range = (
-                pack_task.part.height - acceptable_height_deviation,
-                pack_task.part.height + acceptable_height_deviation)
+                desired_part.height - acceptable_height_deviation,
+                desired_part.height + acceptable_height_deviation)
 
             founded_parts = []
             for object_shape in object_shapes:
@@ -36,10 +38,10 @@ class PartDetector:
                     break
 
                 precision = calculate_two_sizes_match_precision((object_shape_width, object_shape_height),
-                                                                (pack_task.part.width, pack_task.part.height))
+                                                                (desired_part.width, desired_part.height))
                 founded_parts.append((object_shape, precision))
             for founded_part in founded_parts:
-                part_detections.append(PartDetection(pack_task.part, *founded_part))
+                part_detections.append(PartDetection(desired_part, *founded_part))
         used_parts = []
         used_object_shapes = []
         # sort in desc by precision

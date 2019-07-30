@@ -2,78 +2,40 @@
 from scipy.spatial import distance as dist
 from collections import OrderedDict
 import numpy as np
-
+import cv2
 import PartDetection
+from scipy.spatial import distance as dist
 
 
 class PartTracker:
-    def __init__(self, maxDisappeared=50):
-        self.nextObjectID = 0
-        self.objects = OrderedDict()
-        self.disappeared = OrderedDict()
-        self.maxDisappeared = maxDisappeared
+    def __init__(self, distance_threshold=10):
+        self.trackers = cv2.MultiTracker_create()
+        self.part_detections = []
+        self.distance_threshold = distance_threshold
 
-    def register(self, part_detection: PartDetection):
-        self.objects[self.nextObjectID] = part_detection
-        self.disappeared[self.nextObjectID] = 0
-        self.nextObjectID += 1
+    def get_part_detections(self):
+        return self.part_detections
 
-    def deregister(self, objectID):
-        del self.objects[objectID]
-        del self.disappeared[objectID]
+    def update(self, frame):
+        success, boxes = self.trackers.update(frame)
+        for i, box in enumerate(boxes):
+            self.part_detections[i].object_shape.rect_box = [int(v) for v in box]
 
-    def update(self, input_part_detections):
+    def init(self, frame, new_part_detections):
+        self.update(frame)
 
-        if len(input_part_detections) == 0:
-            for objectID in list(self.disappeared.keys()):
-                self.disappeared[objectID] += 1
-
-                if self.disappeared[objectID] > self.maxDisappeared:
-                    self.deregister(objectID)
-
-            return list(self.objects.values())
-
-
-        if len(self.objects) == 0:
-            for part_detection in input_part_detections:
-                self.register(part_detection)
-
-        else:
-            objectIDs = list(self.objects.keys())
-            part_detection_centroids = [part_detection.object_shape.center for part_detection in self.objects.values()]
-            input_part_detection_centroids = [part_detection.object_shape.center for part_detection in input_part_detections]
-            D = dist.cdist(np.array(part_detection_centroids), np.array(input_part_detection_centroids))
-
-            rows = D.min(axis=1).argsort()
-            cols = D.argmin(axis=1)[rows]
-
-            usedRows = set()
-            usedCols = set()
-
-            for (row, col) in zip(rows, cols):
-                if row in usedRows or col in usedCols:
+        for new_part_detection in new_part_detections:
+            new_box = new_part_detection.object_shape.rect_box
+            if self.part_detections:
+                new_box_center = new_part_detection.object_shape.rect_box_center
+                detected_box_centers = (part_detection.object_shape.rect_box_center for part_detection in self.part_detections)
+                is_box_valid = all([int(dist.euclidean(new_box_center, old_box_center)) > self.distance_threshold \
+                                    for old_box_center in detected_box_centers])
+                if not is_box_valid:
                     continue
 
-                objectID = objectIDs[row]
-                self.objects[objectID] = input_part_detections[col]
-                self.disappeared[objectID] = 0
 
-                usedRows.add(row)
-                usedCols.add(col)
 
-            unusedRows = set(range(0, D.shape[0])).difference(usedRows)
-            unusedCols = set(range(0, D.shape[1])).difference(usedCols)
-
-            if D.shape[0] >= D.shape[1]:
-                for row in unusedRows:
-                    objectID = objectIDs[row]
-                    self.disappeared[objectID] += 1
-
-                    if self.disappeared[objectID] > self.maxDisappeared:
-                        self.deregister(objectID)
-
-            else:
-                for col in unusedCols:
-                    self.register(input_part_detections[col])
-
-        return list(self.objects.values())
+            tracker = cv2.TrackerCSRT_create()
+            self.trackers.add(tracker, frame, new_box)
+            self.part_detections.append(new_part_detection)

@@ -10,6 +10,7 @@ import numpy as np
 from PartTracker import PartTracker
 from PartDetector import PartDetector
 
+
 def stretch_place_to_left(rect_table_corners):
     rect_table_corners['tl'][0] -= WorkPlace.WORKER_PLACE_SIZE
     return rect_table_corners
@@ -53,13 +54,11 @@ class WorkPlace:
     bold_font = ImageFont.truetype("arial_bold.ttf", 16)
     line_height_size = 20
 
-
     def __init__(self, packer, table_corners: tuple, packing_side, table_corners_distance_coeffs,
                  frame_size=(1366, 768)):
         self.part_tracker = PartTracker()
         self.part_detector = PartDetector()
         self.next_pack_task_time = None
-        self.part_detections = []
         self.cur_pack_task = None
         self.packer = packer
         self.table_corners = {'tl': table_corners[0], 'tr': table_corners[1],
@@ -67,7 +66,6 @@ class WorkPlace:
 
         self.packing_side = packing_side
         self.frame_size = frame_size
-
 
         self.table_corner_distance_coeffs = {'tl': table_corners_distance_coeffs[0],
                                              'tr': table_corners_distance_coeffs[1],
@@ -106,7 +104,6 @@ class WorkPlace:
         self.next_pack_task_time = next_pack_task_time
 
     def reset_pack_task(self):
-        self.part_detections.clear()
         self.part_tracker = PartTracker()
 
     def define_work_place_corners(self):
@@ -136,25 +133,26 @@ class WorkPlace:
         point_distance_coeff += self.rect_table_corner_distance_coeffs['bl']
         return point_distance_coeff
 
-    def detects_parts(self, object_shapes: list):
-
-        best_precision_detections = self.part_detector.detect(self.cur_pack_task, object_shapes, self.calculate_distance_coeff_by_point)
-        self.part_detections = self.part_tracker.update(best_precision_detections)
+    def detects_parts(self, frame, object_shapes: list):
+        best_precision_part_detections = self.part_detector.detect(self.cur_pack_task, object_shapes,
+                                                                   self.calculate_distance_coeff_by_point)
+        if best_precision_part_detections:
+            # init include update and adding new part_detections
+            self.part_tracker.init(frame, best_precision_part_detections)
+        else:
+            self.part_tracker.update(frame)
         self.update_pack_task_statuses()
-
 
     def update_pack_task_statuses(self):
         pack_task_parts = [pack_task_item.part for pack_task_item in self.cur_pack_task]
-        part_detections_parts = set(part_detection.part for part_detection in self.part_detections)
+        part_detections_parts = set(part_detection.part for part_detection in self.part_tracker.get_part_detections())
         for i, pack_task_part in enumerate(pack_task_parts):
             if pack_task_part in part_detections_parts:
                 self.cur_pack_task[i].set_status_as_detected()
-            else:
-                self.cur_pack_task[i].set_status_as_not_detected()
 
-    def visualize_part_detections(self, image):        #cv2.drawContours(image, [box.astype("int")], -1, (0, 255, 0), 2)
+    def visualize_part_detections(self, image):
 
-        for part_detection in self.part_detections:
+        for part_detection in self.part_tracker.get_part_detections():
             shape = part_detection.object_shape
             points = [*shape.points, shape.center, shape.tm_point, shape.rm_point]
             points = [(point[0] + self.rect_table_corners['tl'][0],
@@ -167,17 +165,16 @@ class WorkPlace:
             real_width = shape.width * distance_coeff
             real_height = shape.height * distance_coeff
 
-
             def putText(x, y, value: float):
                 cv2.putText(image, f'{int(value)}', (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.65, (255, 0, 0), 2)
 
-            putText(points[5][0] - 15,  points[5][1] - 10, real_width)
+            putText(points[5][0] - 15, points[5][1] - 10, real_width)
             putText(points[6][0] + 10, points[6][1], real_height)
 
             print_pos = [next_pack_task.print_pos for next_pack_task in self.cur_pack_task if
                          next_pack_task.part is part_detection.part][0]
-            cv2.line(image, (print_pos[0], int(print_pos[1] + WorkPlace.line_height_size / 2)), points[-3], (255, 255, 255))
-
+            cv2.line(image, (print_pos[0], int(print_pos[1] + WorkPlace.line_height_size / 2)), points[-3],
+                     (255, 255, 255))
 
     def apply_tasks_on_frame(self, frame):
         im = Image.fromarray(frame)
@@ -205,6 +202,3 @@ class WorkPlace:
 
         frame = np.asarray(im)
         return frame
-
-
-

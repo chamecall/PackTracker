@@ -152,7 +152,7 @@ while True:
 
     for i, table_object_shapes in enumerate(all_objects_shapes):
         work_place = work_places[i]
-        work_place.detects_parts(table_object_shapes)
+        work_place.detects_parts(frame, table_object_shapes)
         work_place.visualize_part_detections(frame)
 
     cv2.imshow('frame', frame)
