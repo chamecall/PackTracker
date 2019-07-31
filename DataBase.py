@@ -1,15 +1,18 @@
 from tinydb import TinyDB, where
 import logging
+from os import path
 
 class DataBase:
     def __init__(self):
         self.db_name = 'db.json'
+        is_db_exist = path.exists(self.db_name)
         self.db = TinyDB(self.db_name)
         self.file_name = 'db.txt'
         self.encoding = 'utf-8'
         self.file = None
         self.sort_field = None
-        #self.load_file_in_db()
+        if not is_db_exist:
+            self.load_file_in_db()
 
     def load_file_in_db(self):
         try:
