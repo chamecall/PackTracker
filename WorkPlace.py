@@ -163,32 +163,37 @@ class WorkPlace:
             points = [(point[0] + self.rect_table_corners['tl'][0],
                        point[1] + self.rect_table_corners['tl'][1]) for point in points]
 
+            print_pos, index = \
+                [(next_pack_task.print_pos, next_pack_task.index) for next_pack_task in self.cur_pack_task if
+                 next_pack_task.part is part_detection.part][0]
+
+            color = self.generate_color_by_index(index)
             arr = np.asarray(points[:-3]).astype('int')
-            cv2.drawContours(frame, [arr], -1, (0, 255, 0), 2)
+            cv2.drawContours(frame, [arr], -1, color, 2)
 
             distance_coeff = self.calculate_distance_coeff_by_point(shape.center)
             real_width = shape.width * distance_coeff
             real_height = shape.height * distance_coeff
 
             def putText(x, y, value: float):
-                cv2.putText(frame, f'{int(value)}', (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.65, (255, 0, 0), 2)
+                cv2.putText(frame, f'{int(value)} mm', (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.65, (255, 0, 0), 2)
 
-            putText(points[5][0] - 15, points[5][1] - 10, real_width)
-            putText(points[6][0] + 10, points[6][1], real_height)
+            putText(points[5][0] - 15, points[5][1] - 10, real_height)
+            putText(points[6][0] + 10, points[6][1], real_width)
 
-            print_pos = [next_pack_task.print_pos for next_pack_task in self.cur_pack_task if
-                         next_pack_task.part is part_detection.part][0]
+            cv2.circle(frame, (print_pos[0], int(print_pos[1] + WorkPlace.line_height_size / 2)), 5, color, -1)
+            cv2.circle(frame, points[-3], 5, color, -1)
             cv2.line(frame, (print_pos[0], int(print_pos[1] + WorkPlace.line_height_size / 2)), points[-3],
-                     (255, 255, 255))
+                     color)
 
     def apply_tasks_on_frame(self, frame):
         im = Image.fromarray(frame)
         draw = ImageDraw.Draw(im)
 
-        def draw_text(x, y, task, is_bold=False):
+        def draw_text(x, y, task, color, is_bold=False):
             font = WorkPlace.bold_font if is_bold else WorkPlace.font
             draw.text((x, y), f"{task.part.name} ({task.amount}), "
-            f"{task.part.height}x{task.part.width}x{task.part.depth}", (0, 255, 255), font=font)
+            f"{task.part.height}x{task.part.width}x{task.part.depth}", color, font=font)
 
         x_value, y_value = None, None
         if self.packing_side == 'Left':
@@ -197,13 +202,23 @@ class WorkPlace:
         elif self.packing_side == 'Right':
             y_value = 0
             x_value = frame.shape[1] - 350
+
         for cur_task in self.cur_pack_task:
             bold = False
+            color = self.generate_color_by_index(cur_task.index) if cur_task.is_detected() else (0, 0, 0)
             if cur_task.is_detected():
                 bold = True
-            draw_text(x_value, y_value, cur_task, is_bold=bold)
+            draw_text(x_value, y_value, cur_task, color, is_bold=bold)
             cur_task.print_pos = (x_value, y_value)
             y_value += WorkPlace.line_height_size
 
         frame = np.asarray(im)
         return frame
+
+    @staticmethod
+    def generate_color_by_index(index, color_step=80):
+        bgr = 255, 255, 255
+        lvl = index // 3
+        bgr = [channel - lvl * color_step for channel in bgr]
+        bgr[index % 3] -= color_step
+        return tuple(bgr)

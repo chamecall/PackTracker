@@ -92,11 +92,10 @@ vid_writer = cv2.VideoWriter('edge_output.avi', cv2.VideoWriter_fourcc(*"XVID"),
                              (cap_width, cap_height))
 cv2.namedWindow("frame", cv2.WND_PROP_FULLSCREEN)
 cv2.setWindowProperty("frame", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
-previous_blurred_frame = None
+#previous_blurred_frame = None
 
 db = DataBase()
 current_time = format_time_from_str('7/1/2019 13:16:33')
-
 work_places = initialize_work_places()
 # bounding_areas = [list(work_place.rect_work_place_corners.values()) for work_place in work_places]
 
@@ -109,8 +108,6 @@ while True:
     if not captured:
         break
 
-    # cv2.imshow('part of table', frame[214:1061, 1300:1627])
-
     for work_place in work_places:
         if current_time == work_place.next_pack_task_time:
             cur_task, next_task_time = PackTask.get_pack_tasks(db, format_time_to_str(current_time),
@@ -120,6 +117,10 @@ while True:
             work_place.reset_pack_task()
 
         frame = work_place.apply_tasks_on_frame(frame)
+
+        table_object_shapes = Edging.find_contours(work_place.get_table_view_from_frame(frame))
+        work_place.detects_parts(frame, table_object_shapes)
+        work_place.visualize_part_detections(frame)
 
     # print out our time
     cv2.putText(frame, format_time_to_str(current_time), (90, 150), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (255, 255, 255), 2)
@@ -141,15 +142,6 @@ while True:
     # for movement_rect in movement_rects:
     #     roi = frame[movement_rect[0][1]:movement_rect[1][1], movement_rect[0][0]:movement_rect[1][0]]
     # frcnn.forward(roi)
-
-    all_objects_shapes = []
-    for work_place in work_places:
-        all_objects_shapes.append(Edging.get_contours(work_place.get_table_view_from_frame(frame)))
-
-    for i, table_object_shapes in enumerate(all_objects_shapes):
-        work_place = work_places[i]
-        work_place.detects_parts(frame, table_object_shapes)
-        work_place.visualize_part_detections(frame)
 
     cv2.imshow('frame', frame)
     vid_writer.write(frame)

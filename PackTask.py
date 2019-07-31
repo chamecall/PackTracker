@@ -6,10 +6,11 @@ import cv2
 class PackTask:
     statuses = {'Detected': 0, 'Not detected': 1}
 
-    def __init__(self, part: Part, amount):
+    def __init__(self, part: Part, amount, index):
         self.status = PackTask.statuses['Not detected']
         self.part = part
         self.amount = amount
+        self.index = index
 
     def is_detected(self):
         return self.status == PackTask.statuses['Detected']
@@ -29,11 +30,11 @@ class PackTask:
         if data:
             cur_task_time = data[0]['Date']
 
-        for item in data:
+        for i, item in enumerate(data):
             if item['Date'] != cur_task_time:
                 next_task_time = item['Date']
                 break
             part = Part(item['Products'].split(',')[1], int(item['Length']), int(item['Depth']), int(item['Height']),
                         int(item['ProductsCount']))
-            pack_tasks.append(PackTask(part, int(item['ProductsCount'])))
+            pack_tasks.append(PackTask(part, int(item['ProductsCount']), i))
         return pack_tasks, f'{next_task_time}'

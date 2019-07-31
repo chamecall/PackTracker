@@ -101,3 +101,6 @@ def calculate_two_sizes_match_precision(matched_object: tuple, reference: tuple)
 
 def midpoint(ptA, ptB):
     return int((ptA[0] + ptB[0]) * 0.5), int((ptA[1] + ptB[1]) * 0.5)
+
+
+#restrict_rectangle_areas_by_another_ones(movement_rects, table_areas)

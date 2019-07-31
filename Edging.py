@@ -4,17 +4,10 @@ import numpy as np
 import argparse
 import imutils
 import cv2
-
 from ObjectShape import ObjectShape
-from WorkPlace import WorkPlace
-import Utils
-from collections import deque
 
 
-
-
-
-def get_contours(image):
+def find_contours(image):
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     gray = cv2.GaussianBlur(gray, (13, 13), 0)
 
@@ -41,9 +34,7 @@ def get_contours(image):
         box = cv2.cv.BoxPoints(box) if imutils.is_cv2() else cv2.boxPoints(box)
         box = np.array(box, dtype="int")
 
-
         box = perspective.order_points(box)
-
 
         (tl, tr, br, bl) = box
 
@@ -51,22 +42,13 @@ def get_contours(image):
     return corners
 
 
-
-def apply_info(object_shape: ObjectShape, image, work_place):
-
+def apply_info(object_shape: ObjectShape, image):
     cv2.circle(image, object_shape.tm_point, 5, (255, 0, 0), -1)
     cv2.circle(image, object_shape.bm_point, 5, (255, 0, 0), -1)
     cv2.circle(image, object_shape.lm_point, 5, (255, 0, 0), -1)
     cv2.circle(image, object_shape.rm_point, 5, (255, 0, 0), -1)
 
-
-
     cv2.line(image, object_shape.tm_point, object_shape.bm_point,
              (255, 0, 255), 2)
     cv2.line(image, object_shape.lm_point, object_shape.rm_point,
              (255, 0, 255), 2)
-
-
-
-
-
