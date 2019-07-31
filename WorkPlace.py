@@ -54,6 +54,10 @@ class WorkPlace:
     bold_font = ImageFont.truetype("arial_bold.ttf", 16)
     line_height_size = 20
 
+    def get_table_view_from_frame(self, frame: np.ndarray):
+        table_rect = self.rect_table_corners
+        return frame[table_rect['tl'][1]:table_rect['br'][1], table_rect['tl'][0]:table_rect['br'][0]]
+
     def __init__(self, packer, table_corners: tuple, packing_side, table_corners_distance_coeffs,
                  frame_size=(1366, 768)):
         self.part_tracker = PartTracker()
@@ -134,6 +138,7 @@ class WorkPlace:
         return point_distance_coeff
 
     def detects_parts(self, frame, object_shapes: list):
+        frame = self.get_table_view_from_frame(frame)
         best_precision_part_detections = self.part_detector.detect(self.cur_pack_task, object_shapes,
                                                                    self.calculate_distance_coeff_by_point)
         if best_precision_part_detections:
@@ -150,7 +155,7 @@ class WorkPlace:
             if pack_task_part in part_detections_parts:
                 self.cur_pack_task[i].set_status_as_detected()
 
-    def visualize_part_detections(self, image):
+    def visualize_part_detections(self, frame):
 
         for part_detection in self.part_tracker.get_part_detections():
             shape = part_detection.object_shape
@@ -159,21 +164,21 @@ class WorkPlace:
                        point[1] + self.rect_table_corners['tl'][1]) for point in points]
 
             arr = np.asarray(points[:-3]).astype('int')
-            cv2.drawContours(image, [arr], -1, (0, 255, 0), 2)
+            cv2.drawContours(frame, [arr], -1, (0, 255, 0), 2)
 
             distance_coeff = self.calculate_distance_coeff_by_point(shape.center)
             real_width = shape.width * distance_coeff
             real_height = shape.height * distance_coeff
 
             def putText(x, y, value: float):
-                cv2.putText(image, f'{int(value)}', (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.65, (255, 0, 0), 2)
+                cv2.putText(frame, f'{int(value)}', (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.65, (255, 0, 0), 2)
 
             putText(points[5][0] - 15, points[5][1] - 10, real_width)
             putText(points[6][0] + 10, points[6][1], real_height)
 
             print_pos = [next_pack_task.print_pos for next_pack_task in self.cur_pack_task if
                          next_pack_task.part is part_detection.part][0]
-            cv2.line(image, (print_pos[0], int(print_pos[1] + WorkPlace.line_height_size / 2)), points[-3],
+            cv2.line(frame, (print_pos[0], int(print_pos[1] + WorkPlace.line_height_size / 2)), points[-3],
                      (255, 255, 255))
 
     def apply_tasks_on_frame(self, frame):

@@ -38,4 +38,5 @@ class PartTracker:
 
             tracker = cv2.TrackerCSRT_create()
             self.trackers.add(tracker, frame, new_box)
+
             self.part_detections.append(new_part_detection)

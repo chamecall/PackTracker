@@ -14,6 +14,7 @@ from PIL import ImageFont, ImageDraw, Image
 from datetime import datetime, timedelta
 import argparse
 
+
 def process_frame(frame):
     global previous_blurred_frame
     gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -52,7 +53,6 @@ def format_time_to_str(time: datetime):
 
 
 def initialize_work_places():
-
     def set_work_place_task(work_place, task, next_task_time):
         work_place.set_cur_pack_task(task)
         work_place.set_next_pack_task_time(format_time_from_str(next_task_time))
@@ -79,7 +79,6 @@ parser = argparse.ArgumentParser()
 parser.add_argument('-i', dest='input_video', help='Input video file')
 args = parser.parse_args()
 
-
 CONTOUR_AREA_THRESHOLD = 3000
 MINIMUM_DISTANCE_BETWEEN_RECTANGLES = 300
 time_format = '%m/%d/%Y %H:%M:%S'
@@ -101,7 +100,7 @@ current_time = format_time_from_str('7/1/2019 13:16:33')
 work_places = initialize_work_places()
 # bounding_areas = [list(work_place.rect_work_place_corners.values()) for work_place in work_places]
 
-table_areas = [work_place.rect_table_corners for work_place in work_places]
+
 # bounding_areas = Utils.combine_nearby_rects(bounding_areas)
 # frcnn = FRCNN()
 
@@ -110,7 +109,7 @@ while True:
     if not captured:
         break
 
-    #cv2.imshow('part of table', frame[214:1061, 1300:1627])
+    # cv2.imshow('part of table', frame[214:1061, 1300:1627])
 
     for work_place in work_places:
         if current_time == work_place.next_pack_task_time:
@@ -120,11 +119,10 @@ while True:
             work_place.set_next_pack_task_time(format_time_from_str(next_task_time))
             work_place.reset_pack_task()
 
-    # print out time
-    cv2.putText(frame, format_time_to_str(current_time), (90, 150), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (255, 255, 255), 2)
-
-    for work_place in work_places:
         frame = work_place.apply_tasks_on_frame(frame)
+
+    # print out our time
+    cv2.putText(frame, format_time_to_str(current_time), (90, 150), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (255, 255, 255), 2)
 
     # processed_frame = process_frame(frame.copy())
     # contours, _ = cv2.findContours(processed_frame, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -144,11 +142,9 @@ while True:
     #     roi = frame[movement_rect[0][1]:movement_rect[1][1], movement_rect[0][0]:movement_rect[1][0]]
     # frcnn.forward(roi)
 
-    table_views = [frame[table_area['tl'][1]:table_area['br'][1], table_area['tl'][0]:table_area['br'][0]] for
-                   table_area in table_areas]
     all_objects_shapes = []
-    for table_view in table_views:
-        all_objects_shapes.append(Edging.get_contours(table_view))
+    for work_place in work_places:
+        all_objects_shapes.append(Edging.get_contours(work_place.get_table_view_from_frame(frame)))
 
     for i, table_object_shapes in enumerate(all_objects_shapes):
         work_place = work_places[i]
