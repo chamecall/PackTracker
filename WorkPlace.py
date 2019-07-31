@@ -181,9 +181,10 @@ class WorkPlace:
             putText(points[5][0] - 15, points[5][1] - 10, real_height)
             putText(points[6][0] + 10, points[6][1], real_width)
 
-            cv2.circle(frame, (print_pos[0], int(print_pos[1] + WorkPlace.line_height_size / 2)), 5, color, -1)
-            cv2.circle(frame, points[-3], 5, color, -1)
-            cv2.line(frame, (print_pos[0], int(print_pos[1] + WorkPlace.line_height_size / 2)), points[-3],
+            print_pos = (print_pos[0] - 3, int(print_pos[1] + WorkPlace.line_height_size / 2 - 1))
+            cv2.circle(frame, print_pos, 3, color, -1)
+            cv2.circle(frame, points[-3], 3, color, -1)
+            cv2.line(frame, print_pos, points[-3],
                      color)
 
     def apply_tasks_on_frame(self, frame):
