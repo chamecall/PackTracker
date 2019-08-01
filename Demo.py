@@ -100,7 +100,8 @@ while True:
     for work_place in work_places:
         table_part_of_frame = work_place.get_table_view_from_frame(frame)
 
-        if current_time == work_place.next_pack_task_time:
+        if work_place.next_pack_task_time and \
+                current_time >= work_place.next_pack_task_time:
             cur_task, next_task_time = PackTask.get_pack_tasks(db, format_time_to_str(current_time),
                                                                work_place.packer)
             work_place.set_cur_pack_task(cur_task)
