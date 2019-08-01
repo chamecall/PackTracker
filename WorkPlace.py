@@ -60,6 +60,7 @@ class WorkPlace:
 
     def __init__(self, packer, table_corners: tuple, packing_side, table_corners_distance_coeffs,
                  frame_size=(1366, 768)):
+        self.previous_blurred_table = None
         self.part_tracker = PartTracker()
         self.part_detector = PartDetector()
         self.next_pack_task_time = None
@@ -138,7 +139,7 @@ class WorkPlace:
         return point_distance_coeff
 
     def detects_parts(self, frame, object_shapes: list):
-        frame = self.get_table_view_from_frame(frame)
+        # frame = self.get_table_view_from_frame(frame)
         best_precision_part_detections = self.part_detector.detect(self.cur_pack_task, object_shapes,
                                                                    self.calculate_distance_coeff_by_point)
         if best_precision_part_detections:
@@ -159,7 +160,7 @@ class WorkPlace:
 
         for part_detection in self.part_tracker.get_part_detections():
             shape = part_detection.object_shape
-            points = [*shape.points, shape.center, shape.tm_point, shape.rm_point]
+            points = [shape.rect_box_center, shape.rect_tm_point, shape.rect_rm_point]
             points = [(point[0] + self.rect_table_corners['tl'][0],
                        point[1] + self.rect_table_corners['tl'][1]) for point in points]
 
@@ -168,24 +169,27 @@ class WorkPlace:
                  next_pack_task.part is part_detection.part][0]
 
             color = self.generate_color_by_index(index)
-            arr = np.asarray(points[:-3]).astype('int')
-            cv2.drawContours(frame, [arr], -1, color, 2)
 
-            distance_coeff = self.calculate_distance_coeff_by_point(shape.center)
+            rect_box = tuple((shape.rect_box[0] + self.rect_table_corners['tl'][0],
+                              shape.rect_box[1] + self.rect_table_corners['tl'][1],
+                              *shape.rect_box[2:]))
+            cv2.rectangle(frame, rect_box, (0, 0, 0), 2)
+
+            distance_coeff = self.calculate_distance_coeff_by_point(shape.rect_box_center)
             real_width = shape.width * distance_coeff
             real_height = shape.height * distance_coeff
 
             def putText(x, y, value: float):
                 cv2.putText(frame, f'{int(value)} mm', (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.65, (255, 0, 0), 2)
 
-            putText(points[5][0] - 15, points[5][1] - 10, real_height)
-            putText(points[6][0] + 10, points[6][1], real_width)
+            putText(points[1][0] - 15, points[1][1] - 10, real_height)
+            putText(points[2][0] + 10, points[2][1], real_width)
 
             print_pos = (print_pos[0] - 3, int(print_pos[1] + WorkPlace.line_height_size / 2 - 1))
             cv2.circle(frame, print_pos, 3, color, -1)
-            cv2.circle(frame, points[-3], 3, color, -1)
-            cv2.line(frame, print_pos, points[-3],
-                     color)
+            cv2.circle(frame, points[0], 3, color, -1)
+            cv2.line(frame, print_pos, points[0],
+                     color, 2)
 
     def apply_tasks_on_frame(self, frame):
         im = Image.fromarray(frame)
@@ -216,10 +220,34 @@ class WorkPlace:
         frame = np.asarray(im)
         return frame
 
-    @staticmethod
-    def generate_color_by_index(index, color_step=80):
+    def generate_color_by_index(self, index):
+        tasks_num = len(self.cur_pack_task)
+        color_step = int(255 / (tasks_num / 3))
         bgr = 255, 255, 255
         lvl = index // 3
         bgr = [channel - lvl * color_step for channel in bgr]
         bgr[index % 3] -= color_step
         return tuple(bgr)
+
+    def get_movement_area(self, frame):
+        frame = self.get_table_view_from_frame(frame)
+
+        gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+
+        blurred_frame = cv2.GaussianBlur(gray_frame, (7, 7), 0)
+
+        if self.previous_blurred_table is None:
+            self.previous_blurred_table = blurred_frame
+            return np.zeros(frame.shape[:-1]).astype('uint8')
+
+        delta_frame = cv2.absdiff(self.previous_blurred_table, blurred_frame)
+
+        threshold_frame = cv2.threshold(delta_frame, 15, 255, cv2.THRESH_BINARY)[1]
+
+        kernel = np.ones((3, 3), np.uint8)
+        dilated_frame = cv2.dilate(threshold_frame, kernel, iterations=3)
+        # cv2.imshow(f'{self.packer}', dilated_frame)
+        # cv2.waitKey(1)
+        self.previous_blurred_table = blurred_frame
+
+        return dilated_frame

@@ -38,7 +38,7 @@ def rectangles_intersection(rect_a, rect_b):
 
 def combine_nearby_rects(rectangles, shift=0):
     if not rectangles:
-        return None
+        return []
 
     rectangles = deque(rectangles)
     num_permutations = 0
@@ -69,18 +69,18 @@ def combine_nearby_rects(rectangles, shift=0):
     return list(rectangles)
 
 
-def restrict_rectangle_areas_by_another_ones(areas, bounding_areas):
+def restrict_rectangle_areas_by_another_rectangle(areas, bounding_area):
     if not areas:
         return []
 
-    if not bounding_areas:
+
+    if not bounding_area:
         return areas
 
     final_areas = []
     for area in areas:
-        for bounding_area in bounding_areas:
-            if are_rectangles_intersect(area, bounding_area):
-                final_areas.append(rectangles_intersection(area, bounding_area))
+        if are_rectangles_intersect(area, bounding_area):
+            final_areas.append(rectangles_intersection(area, bounding_area))
     return final_areas
 
 

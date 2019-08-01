@@ -25,7 +25,7 @@ class PartDetector:
 
             founded_parts = []
             for object_shape in object_shapes:
-                distance_coeff = distance_coeff_calculator(object_shape.center)
+                distance_coeff = distance_coeff_calculator(object_shape.rect_box_center)
                 object_shape_width = object_shape.width * distance_coeff
                 object_shape_height = object_shape.height * distance_coeff
 
