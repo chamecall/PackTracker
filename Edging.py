@@ -7,7 +7,7 @@ import cv2
 from ObjectShape import ObjectShape
 
 
-def find_contours(image, alignment_point):
+def find_contours(image, alignment_point=(0, 0)):
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     gray = cv2.GaussianBlur(gray, (7, 7), 0)
 
@@ -30,7 +30,6 @@ def find_contours(image, alignment_point):
         if not 500 < cv2.contourArea(c) < 3000:
             continue
 
-        image = image
         box = cv2.minAreaRect(c)
         box = cv2.cv.BoxPoints(box) if imutils.is_cv2() else cv2.boxPoints(box)
         box = [[point[0] + alignment_point[0], point[1] + alignment_point[1]] for point in box]

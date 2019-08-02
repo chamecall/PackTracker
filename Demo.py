@@ -90,7 +90,7 @@ db = DataBase()
 current_time = format_time_from_str('7/1/2019 13:16:33')
 work_places = initialize_work_places()
 
-# frcnn = FRCNN()
+#frcnn = FRCNN()
 
 while True:
     captured, frame = camera.read()
@@ -115,21 +115,20 @@ while True:
         contours, _ = cv2.findContours(movement_frame, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         movement_rects = get_bounding_boxes_from_contours(contours)
         movement_rects = Utils.combine_nearby_rects(movement_rects, shift=MINIMUM_DISTANCE_BETWEEN_RECTANGLES)
+        #frcnn.forward(frame)
         table_object_shapes = []
-
         for movement_rect in movement_rects:
             rom = table_part_of_frame[movement_rect[0][1]:movement_rect[1][1], movement_rect[0][0]:movement_rect[1][0]]
             table_object_shapes += find_contours(rom, movement_rect[0])
+            #frcnn.forward(rom)
         work_place.detects_parts(table_part_of_frame, table_object_shapes)
+
         work_place.visualize_part_detections(frame)
         frame = work_place.apply_tasks_on_frame(frame)
 
     # print out our time
     cv2.putText(frame, format_time_to_str(current_time), (90, 150), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (255, 255, 255), 2)
 
-    # for movement_rect in movement_rects:
-    #     roi = frame[movement_rect[0][1]:movement_rect[1][1], movement_rect[0][0]:movement_rect[1][0]]
-    # frcnn.forward(roi)
 
     cv2.imshow('frame', frame)
     vid_writer.write(frame)

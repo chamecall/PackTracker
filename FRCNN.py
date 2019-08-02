@@ -257,8 +257,8 @@ class FRCNN:
         print('Elapsed time = {}'.format(time.time() - st))
         print(all_dets)
         # enable if you want to show pics
-        # cv2.imshow('img', img)
-        # cv2.waitKey(1)
+        cv2.imshow('img', img)
+        cv2.waitKey(1)
         if self.write:
             import os
 
