@@ -39,7 +39,7 @@ while True:
 
     frame = cv2.cvtColor(orig, cv2.COLOR_BGR2HSV)
     frame = cv2.GaussianBlur(frame, (7, 7), 0)
-    frame_box_out = cv2.inRange(frame, (0, 20, 125), (30, 130, 230))
+    frame_box_out = cv2.inRange(frame, (0, 20, 150), (20, 115, 230))
     frame_box_in = cv2.inRange(frame, (12, 86, 67), (23, 154, 123))
     frame_box_out = cv2.dilate(frame_box_out, (3, 3), iterations=1)
     frame_box_in = cv2.dilate(frame_box_in, (3, 3), iterations=1)

@@ -121,9 +121,11 @@ while True:
             rom = table_part_of_frame[movement_rect[0][1]:movement_rect[1][1], movement_rect[0][0]:movement_rect[1][0]]
             table_object_shapes += find_contours(rom, movement_rect[0])
             #frcnn.forward(rom)
-        work_place.detects_parts(table_part_of_frame, table_object_shapes)
+       # work_place.detect_parts(table_part_of_frame, table_object_shapes)
+        work_place.detect_boxes(frame)
 
-        work_place.visualize_part_detections(frame)
+       # work_place.visualize_part_detections(frame)
+        work_place.visualize_box_detections(frame)
         frame = work_place.apply_tasks_on_frame(frame)
 
     # print out our time

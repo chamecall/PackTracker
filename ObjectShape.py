@@ -26,7 +26,6 @@ class ObjectShape:
         self.width = int(dist.euclidean(self.tl_point, self.tr_point))
         self.set_rect_box((*rect_tl_point, rect_width, rect_height))
 
-
     def set_rect_box(self, new_rect_box):
         self.rect_box = new_rect_box
         self.rect_box_center = tuple([int(new_rect_box[i] + new_rect_box[i + 2] / 2) for i in range(2)])

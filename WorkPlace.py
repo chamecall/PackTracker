@@ -9,7 +9,7 @@ from PIL import ImageFont, ImageDraw, Image
 import numpy as np
 from PartTracker import PartTracker
 from PartDetector import PartDetector
-
+from BoxDetector import BoxDetector
 
 def stretch_place_to_left(rect_table_corners):
     rect_table_corners['tl'][0] -= WorkPlace.WORKER_PLACE_SIZE
@@ -40,7 +40,7 @@ calculate_work_place_size = {
 
 
 class WorkPlace:
-    WORKER_PLACE_SIZE = 300
+    WORKER_PLACE_SIZE = 100
 
     def calculate_rect_table_area(self):
         tcs = self.table_corners
@@ -58,11 +58,16 @@ class WorkPlace:
         table_rect = self.rect_table_corners
         return frame[table_rect['tl'][1]:table_rect['br'][1], table_rect['tl'][0]:table_rect['br'][0]]
 
+    def get_work_place_view_from_frame(self, frame: np.ndarray):
+        work_pl_rect = self.rect_work_place_corners
+        return frame[work_pl_rect['tl'][1]:work_pl_rect['br'][1], work_pl_rect['tl'][0]:work_pl_rect['br'][0]]
+
     def __init__(self, packer, table_corners: tuple, packing_side, table_corners_distance_coeffs,
                  frame_size=(1366, 768)):
         self.previous_blurred_table = None
         self.part_tracker = PartTracker()
         self.part_detector = PartDetector()
+        self.box_detector = BoxDetector()
         self.next_pack_task_time = None
         self.cur_pack_task = None
         self.packer = packer
@@ -138,7 +143,7 @@ class WorkPlace:
         point_distance_coeff += self.rect_table_corner_distance_coeffs['bl']
         return point_distance_coeff
 
-    def detects_parts(self, frame, object_shapes: list):
+    def detect_parts(self, frame, object_shapes: list):
         # frame = self.get_table_view_from_frame(frame)
         best_precision_part_detections = self.part_detector.detect(self.cur_pack_task, object_shapes,
                                                                    self.calculate_distance_coeff_by_point)
@@ -251,3 +256,18 @@ class WorkPlace:
         self.previous_blurred_table = blurred_frame
 
         return dilated_frame
+
+    def visualize_box_detections(self, frame):
+        table_part_of_frame = self.get_work_place_view_from_frame(frame)
+        for box in self.box_detector.closed_boxes:
+            cv2.rectangle(table_part_of_frame, box.shape.rect_box, (0, 0, 255), 2)
+            cv2.putText(table_part_of_frame, '_closed box_', box.shape.rect_box_center, cv2.FONT_HERSHEY_COMPLEX, 0.7,
+                        (0, 0, 0), 2)
+
+        for box in self.box_detector.opened_boxes:
+            cv2.rectangle(table_part_of_frame, box.shape.rect_box, (255, 0, 0), 2)
+            cv2.putText(table_part_of_frame, '_opened box_', box.shape.rect_box_center, cv2.FONT_HERSHEY_COMPLEX, 0.7, (0, 255, 255), 2)
+
+    def detect_boxes(self, frame):
+        table_part_of_frame = self.get_work_place_view_from_frame(frame)
+        self.box_detector.detect_boxes(table_part_of_frame)
