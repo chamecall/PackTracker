@@ -17,20 +17,20 @@ class ObjectShape:
 
         rect_tl_point = (min_x, min_y)
         rect_width, rect_height = max_x - min_x, max_y - min_y
-        self.rect_box = None
-        self.rect_box_center = None
-        self.rect_tm_point = None
-        self.rect_rm_point = None
+        self.box_rect = None
+        self.box_rect_center = None
+        self.tm_point_rect = None
+        self.rm_point_rect = None
 
         self.height = int(dist.euclidean(self.tl_point, self.bl_point))
         self.width = int(dist.euclidean(self.tl_point, self.tr_point))
-        self.set_rect_box((*rect_tl_point, rect_width, rect_height))
+        self.set_box_rect((*rect_tl_point, rect_width, rect_height))
 
-    def set_rect_box(self, new_rect_box):
-        self.rect_box = new_rect_box
-        self.rect_box_center = tuple([int(new_rect_box[i] + new_rect_box[i + 2] / 2) for i in range(2)])
-        rect_tl_point = (new_rect_box[0], new_rect_box[1])
+    def set_box_rect(self, new_rect_box):
+        self.box_rect = new_rect_box
+        self.box_rect_center = tuple([int(new_rect_box[i] + new_rect_box[i + 2] / 2) for i in range(2)])
+        tl_point_rect = (new_rect_box[0], new_rect_box[1])
         rect_width = new_rect_box[2]
         rect_height = new_rect_box[3]
-        self.rect_tm_point = (int(rect_tl_point[0] + rect_width / 2), rect_tl_point[1])
-        self.rect_rm_point = (rect_tl_point[0] + rect_width, int(rect_tl_point[1] + rect_height / 2))
+        self.tm_point_rect = (int(tl_point_rect[0] + rect_width / 2), tl_point_rect[1])
+        self.rm_point_rect = (tl_point_rect[0] + rect_width, int(tl_point_rect[1] + rect_height / 2))

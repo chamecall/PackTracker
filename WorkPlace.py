@@ -7,7 +7,7 @@ from Utils import is_num_in_range, calculate_two_sizes_match_precision
 from scipy.spatial import distance as dist
 from PIL import ImageFont, ImageDraw, Image
 import numpy as np
-from PartTracker import PartTracker
+from ObjectTracker import ObjectTracker
 from PartDetector import PartDetector
 from BoxDetector import BoxDetector
 
@@ -65,9 +65,11 @@ class WorkPlace:
     def __init__(self, packer, table_corners: tuple, packing_side, table_corners_distance_coeffs,
                  frame_size=(1366, 768)):
         self.previous_blurred_table = None
-        self.part_tracker = PartTracker()
+        self.part_tracker = ObjectTracker()
         self.part_detector = PartDetector()
         self.box_detector = BoxDetector()
+        self.opened_box_tracker = ObjectTracker(distance_threshold=150)
+        self.closed_box_tracker = ObjectTracker()
         self.next_pack_task_time = None
         self.cur_pack_task = None
         self.packer = packer
@@ -114,7 +116,7 @@ class WorkPlace:
         self.next_pack_task_time = next_pack_task_time
 
     def reset_pack_task(self):
-        self.part_tracker = PartTracker()
+        self.part_tracker = ObjectTracker()
 
     def define_work_place_corners(self):
         rect_table_corners_copy = copy.deepcopy(self.rect_table_corners)
@@ -147,23 +149,21 @@ class WorkPlace:
         # frame = self.get_table_view_from_frame(frame)
         best_precision_part_detections = self.part_detector.detect(self.cur_pack_task, object_shapes,
                                                                    self.calculate_distance_coeff_by_point)
-        if best_precision_part_detections:
-            # init include update and adding new part_detections
-            self.part_tracker.init(frame, best_precision_part_detections)
-        else:
-            self.part_tracker.update(frame)
+
+        self.part_tracker.track(frame, best_precision_part_detections)
+
         self.update_pack_task_statuses()
 
     def update_pack_task_statuses(self):
         pack_task_parts = [pack_task_item.part for pack_task_item in self.cur_pack_task]
-        part_detections_parts = set(part_detection.part for part_detection in self.part_tracker.get_part_detections())
+        part_detections_parts = set(part_detection.part for part_detection in self.part_tracker.get_detections())
         for i, pack_task_part in enumerate(pack_task_parts):
             if pack_task_part in part_detections_parts:
                 self.cur_pack_task[i].set_status_as_detected()
 
     def visualize_part_detections(self, frame):
 
-        for part_detection in self.part_tracker.get_part_detections():
+        for part_detection in self.part_tracker.get_detections():
             shape = part_detection.object_shape
             points = [shape.rect_box_center, shape.rect_tm_point, shape.rect_rm_point]
             points = [(point[0] + self.rect_table_corners['tl'][0],
@@ -259,15 +259,24 @@ class WorkPlace:
 
     def visualize_box_detections(self, frame):
         table_part_of_frame = self.get_work_place_view_from_frame(frame)
-        for box in self.box_detector.closed_boxes:
-            cv2.rectangle(table_part_of_frame, box.shape.rect_box, (0, 0, 255), 2)
-            cv2.putText(table_part_of_frame, '_closed box_', box.shape.rect_box_center, cv2.FONT_HERSHEY_COMPLEX, 0.7,
-                        (0, 0, 0), 2)
+        for box in self.opened_box_tracker.detections:
+            cv2.rectangle(table_part_of_frame, box.object_shape.box_rect, (255, 0, 0), 2)
+            cv2.putText(table_part_of_frame, f'{box.fullness}', box.object_shape.box_rect_center, cv2.FONT_HERSHEY_COMPLEX, 0.7,
+                        (255, 0, 0), 2)
 
-        for box in self.box_detector.opened_boxes:
-            cv2.rectangle(table_part_of_frame, box.shape.rect_box, (255, 0, 0), 2)
-            cv2.putText(table_part_of_frame, '_opened box_', box.shape.rect_box_center, cv2.FONT_HERSHEY_COMPLEX, 0.7, (0, 255, 255), 2)
+        # for box in self.box_detector.opened_boxes:
+        #     cv2.rectangle(table_part_of_frame, box.object_shape.rect_box, (255, 0, 0), 2)
+        #     cv2.putText(table_part_of_frame, '_opened box_', box.object_shape.rect_box_center, cv2.FONT_HERSHEY_COMPLEX, 0.7, (255, 0, 0), 2)
 
     def detect_boxes(self, frame):
         table_part_of_frame = self.get_work_place_view_from_frame(frame)
-        self.box_detector.detect_boxes(table_part_of_frame)
+        if not self.opened_box_tracker.detections:
+            opened_box = self.box_detector.detect_opened_boxes(table_part_of_frame)
+            self.opened_box_tracker.update(table_part_of_frame)
+            self.opened_box_tracker.init(table_part_of_frame, opened_box)
+
+        #closed_box = self.box_detector.detect_closed_boxes(table_part_of_frame)
+
+        #self.box_detector.fitler_opened_boxes(table_part_of_frame, self.opened_box_tracker.detections)
+
+
