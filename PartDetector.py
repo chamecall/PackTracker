@@ -1,12 +1,13 @@
 from Utils import is_num_in_range, calculate_two_sizes_match_precision
 from PartDetection import PartDetection
-
+import cv2
+import numpy as np
 
 class PartDetector:
     def __init__(self, precision_threshold=0.8):
         self.precision_threshold = precision_threshold
 
-    def detect(self, pack_tasks, object_shapes, distance_coeff_calculator):
+    def detect(self, frame, pack_tasks, object_shapes, distance_coeff_calculator):
         part_detections = []
         best_precision_detections = []
 
@@ -25,6 +26,12 @@ class PartDetector:
 
             founded_parts = []
             for object_shape in object_shapes:
+                # print(object_shape.box_rect)
+                # cv2.rectangle(frame, (object_shape.box_rect[0], object_shape.box_rect[1]),
+                #               (object_shape.box_rect[0] + object_shape.box_rect[1],
+                #                object_shape.box_rect[1] + object_shape.box_rect[3]),(0, 0, 255))
+                # cv2.imshow('framee', frame)
+                # cv2.waitKey(1)
                 distance_coeff = distance_coeff_calculator(object_shape.box_rect_center)
                 object_shape_width = object_shape.width * distance_coeff
                 object_shape_height = object_shape.height * distance_coeff

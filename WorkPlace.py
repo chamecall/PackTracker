@@ -149,7 +149,7 @@ class WorkPlace:
 
     def detect_parts(self, frame, object_shapes: list):
         # frame = self.get_table_view_from_frame(frame)
-        best_precision_part_detections = self.part_detector.detect(self.cur_pack_task, object_shapes,
+        best_precision_part_detections = self.part_detector.detect(frame, self.cur_pack_task, object_shapes,
                                                                    self.calculate_distance_coeff_by_point)
 
         self.part_tracker.track(frame, best_precision_part_detections)

@@ -3,7 +3,7 @@ import cv2
 from collections import deque
 import Utils
 from WorkPlace import WorkPlace
-from darknet_video import YOLO
+#from darknet_video import YOLO
 from Edging import find_contours
 from DataBase import DataBase
 from PackTask import PackTask
@@ -13,6 +13,7 @@ from matplotlib import cm
 from PIL import ImageFont, ImageDraw, Image
 from datetime import datetime, timedelta
 import argparse
+from Utils import set_better_channel
 
 
 def update_time():
@@ -82,7 +83,7 @@ camera = cv2.VideoCapture(args.input_video)
 
 cap_width = int(camera.get(cv2.CAP_PROP_FRAME_WIDTH))
 cap_height = int(camera.get(cv2.CAP_PROP_FRAME_HEIGHT))
-fps = camera.get(cv2.CAP_PROP_FPS)
+fps = camera.get(cv2.CAP_PROP_FPS) / 3
 vid_writer = cv2.VideoWriter('output.avi', cv2.VideoWriter_fourcc(*"FMP4"), fps,
                              (cap_width, cap_height))
 cv2.namedWindow("frame", cv2.WND_PROP_FULLSCREEN)
@@ -98,6 +99,7 @@ work_places = initialize_work_places()
 while True:
     captured, frame = camera.read()
     frame_copy = frame.copy()
+    #frame_copy = set_better_channel(frame_copy)
     if not captured:
         break
 
@@ -127,9 +129,10 @@ while True:
         movement_rects = get_bounding_boxes_from_contours(contours)
         movement_rects = Utils.combine_nearby_rects(movement_rects, shift=MINIMUM_DISTANCE_BETWEEN_RECTANGLES)
         table_object_shapes = []
-        for movement_rect in movement_rects:
-            rom = table_part_of_frame[movement_rect[0][1]:movement_rect[1][1], movement_rect[0][0]:movement_rect[1][0]]
-            table_object_shapes += find_contours(rom, movement_rect[0])
+        # for movement_rect in movement_rects:
+        #     rom = table_part_of_frame[movement_rect[0][1]:movement_rect[1][1], movement_rect[0][0]:movement_rect[1][0]]
+        #     table_object_shapes += find_contours(rom, movement_rect[0])
+        table_object_shapes += find_contours(table_part_of_frame)
             #yolo.forward(rom)
         work_place.detect_parts(table_part_of_frame, table_object_shapes)
         #work_place.init_open_box(frame_copy, detected_opened_boxes)
