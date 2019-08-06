@@ -7,6 +7,7 @@ import numpy as np
 import time
 import darknet
 
+
 def convertBack(x, y, w, h):
     xmin = int(round(x - (w / 2)))
     xmax = int(round(x + (w / 2)))
@@ -17,10 +18,10 @@ def convertBack(x, y, w, h):
 
 def cvDrawBoxes(detections, img):
     for detection in detections:
-        x, y, w, h = detection[2][0],\
-            detection[2][1],\
-            detection[2][2],\
-            detection[2][3]
+        x, y, w, h = detection[2][0], \
+                     detection[2][1], \
+                     detection[2][2], \
+                     detection[2][3]
         xmin, ymin, xmax, ymax = convertBack(
             float(x), float(y), float(w), float(h))
         pt1 = (xmin, ymin)
@@ -39,90 +40,71 @@ metaMain = None
 altNames = None
 
 
-def set_better_channel(img, clpLim = 3.0, tileGridSize = (8, 8)):
-    lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
-    l, a, b = cv2.split(lab)
 
-    clahe = cv2.createCLAHE(clipLimit=clpLim, tileGridSize=tileGridSize)
-    cl = clahe.apply(l)
 
-    limg = cv2.merge((cl, a, b))
 
-    final = cv2.cvtColor(limg, cv2.COLOR_LAB2BGR)
-    return final
+class YOLO:
+    def __init__(self, width, height):
+        global metaMain, netMain, altNames
+        configPath = "/home/algernon/samba/video_queue/omega-packaging/experiments/exp-7-contrasting-with-YOLO/config/omega-pack-yolov3.cfg"
+        weightPath = "/home/algernon/samba/video_queue/omega-packaging/experiments/exp-7-contrasting-with-YOLO/models/omega-pack-yolov3_8000.weights"
+        metaPath = "/home/algernon/samba/video_queue/omega-packaging/experiments/exp-7-contrasting-with-YOLO/config/omega-pack.data"
+        if not os.path.exists(configPath):
+            raise ValueError("Invalid config path `" +
+                             os.path.abspath(configPath) + "`")
+        if not os.path.exists(weightPath):
+            raise ValueError("Invalid weight path `" +
+                             os.path.abspath(weightPath) + "`")
+        if not os.path.exists(metaPath):
+            raise ValueError("Invalid data file path `" +
+                             os.path.abspath(metaPath) + "`")
+        if netMain is None:
+            netMain = darknet.load_net_custom(configPath.encode(
+                "ascii"), weightPath.encode("ascii"), 0, 1)  # batch size = 1
+        if metaMain is None:
+            metaMain = darknet.load_meta(metaPath.encode("ascii"))
+        if altNames is None:
+            try:
+                with open(metaPath) as metaFH:
+                    metaContents = metaFH.read()
+                    import re
+                    match = re.search("names *= *(.*)$", metaContents,
+                                      re.IGNORECASE | re.MULTILINE)
+                    if match:
+                        result = match.group(1)
+                    else:
+                        result = None
+                    try:
+                        if os.path.exists(result):
+                            with open(result) as namesFH:
+                                namesList = namesFH.read().strip().split("\n")
+                                altNames = [x.strip() for x in namesList]
+                    except TypeError:
+                        pass
+            except Exception:
+                pass
+            self.width = width
+            self.height = height
+            self.darknet_image = darknet.make_image(width,
+                                               height, 3)
 
-def YOLO():
-
-    global metaMain, netMain, altNames
-    configPath = "/home/algernon/samba/video_queue/omega-packaging/experiments/exp-7-contrasting-with-YOLO/config/omega-pack-yolov3.cfg"
-    weightPath = "/home/algernon/samba/video_queue/omega-packaging/experiments/exp-7-contrasting-with-YOLO/models/omega-pack-yolov3_8000.weights"
-    metaPath = "/home/algernon/samba/video_queue/omega-packaging/experiments/exp-7-contrasting-with-YOLO/config/omega-pack.data"
-    if not os.path.exists(configPath):
-        raise ValueError("Invalid config path `" +
-                         os.path.abspath(configPath)+"`")
-    if not os.path.exists(weightPath):
-        raise ValueError("Invalid weight path `" +
-                         os.path.abspath(weightPath)+"`")
-    if not os.path.exists(metaPath):
-        raise ValueError("Invalid data file path `" +
-                         os.path.abspath(metaPath)+"`")
-    if netMain is None:
-        netMain = darknet.load_net_custom(configPath.encode(
-            "ascii"), weightPath.encode("ascii"), 0, 1)  # batch size = 1
-    if metaMain is None:
-        metaMain = darknet.load_meta(metaPath.encode("ascii"))
-    if altNames is None:
-        try:
-            with open(metaPath) as metaFH:
-                metaContents = metaFH.read()
-                import re
-                match = re.search("names *= *(.*)$", metaContents,
-                                  re.IGNORECASE | re.MULTILINE)
-                if match:
-                    result = match.group(1)
-                else:
-                    result = None
-                try:
-                    if os.path.exists(result):
-                        with open(result) as namesFH:
-                            namesList = namesFH.read().strip().split("\n")
-                            altNames = [x.strip() for x in namesList]
-                except TypeError:
-                    pass
-        except Exception:
-            pass
-    cap = cv2.VideoCapture("/home/algernon/PycharmProjects/test/origin.avi")
-    cap.set(3, 1280)
-    cap.set(4, 720)
-    out = cv2.VideoWriter(
-        "output.avi", cv2.VideoWriter_fourcc(*"XVID"), 30.0,
-        (darknet.network_width(netMain), darknet.network_height(netMain)))
-    print("Starting the YOLO loop...")
-
-    # Create an image we reuse for each detect
-    darknet_image = darknet.make_image(darknet.network_width(netMain),
-                                    darknet.network_height(netMain), 3)
-    while True:
-        prev_time = time.time()
-        ret, frame_read = cap.read()
-        frame_read = set_better_channel(frame_read)
-        frame_rgb = cv2.cvtColor(frame_read, cv2.COLOR_BGR2RGB)
+    def forward(self, frame):
+        #prev_time = time.time()
+        frame_rgb = cv2.cvtColor(frame,  cv2.COLOR_BGR2RGB)
         frame_resized = cv2.resize(frame_rgb,
-                                   (darknet.network_width(netMain),
-                                    darknet.network_height(netMain)),
+                                   (self.width,
+                                    self.height),
                                    interpolation=cv2.INTER_LINEAR)
 
-        darknet.copy_image_from_bytes(darknet_image,frame_resized.tobytes())
+        darknet.copy_image_from_bytes(self.darknet_image, frame_resized.tobytes())
 
-        detections = darknet.detect_image(netMain, metaMain, darknet_image, thresh=0.25)
+        detections = darknet.detect_image(netMain, metaMain, self.darknet_image, thresh=0.25)
+
         image = cvDrawBoxes(detections, frame_resized)
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        print(1/(time.time()-prev_time))
-        cv2.imshow('Demo', image)
-        out.write()
-        cv2.waitKey(3)
-    cap.release()
-    out.release()
+        # cv2.imshow('ff', image)
+        # cv2.waitKey(1)
+        #print(1 / (time.time() - prev_time))
+        return detections
 
 if __name__ == "__main__":
     YOLO()

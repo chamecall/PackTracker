@@ -4,12 +4,12 @@ from Utils import midpoint
 
 class ObjectShape:
     def __init__(self, points: tuple):
+
         self.tl_point = points[0]
         self.tr_point = points[1]
         self.br_point = points[2]
         self.bl_point = points[3]
         points = [self.tl_point, self.tr_point, self.br_point, self.bl_point]
-
         xs = [int(point[0]) for point in points]
         min_x, max_x = min(xs), max(xs)
         ys = [int(point[1]) for point in points]

@@ -1,5 +1,5 @@
 from collections import deque
-
+import cv2
 
 def are_rectangles_intersect(first_rectangle, second_rectangle, shift=0):
     if first_rectangle[0][0] > second_rectangle[1][0] + shift or second_rectangle[0][0] > \
@@ -102,5 +102,16 @@ def calculate_two_sizes_match_precision(matched_object: tuple, reference: tuple)
 def midpoint(ptA, ptB):
     return int((ptA[0] + ptB[0]) * 0.5), int((ptA[1] + ptB[1]) * 0.5)
 
+def set_better_channel(img, clpLim=3.0, tileGridSize=(8, 8)):
+    lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
+    l, a, b = cv2.split(lab)
+
+    clahe = cv2.createCLAHE(clipLimit=clpLim, tileGridSize=tileGridSize)
+    cl = clahe.apply(l)
+
+    limg = cv2.merge((cl, a, b))
+
+    final = cv2.cvtColor(limg, cv2.COLOR_LAB2BGR)
+    return final
 
 #restrict_rectangle_areas_by_another_ones(movement_rects, table_areas)

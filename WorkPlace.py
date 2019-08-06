@@ -10,6 +10,8 @@ import numpy as np
 from ObjectTracker import ObjectTracker
 from PartDetector import PartDetector
 from BoxDetector import BoxDetector
+from PackBox import PackBox
+from ObjectShape import ObjectShape
 
 def stretch_place_to_left(rect_table_corners):
     rect_table_corners['tl'][0] -= WorkPlace.WORKER_PLACE_SIZE
@@ -160,12 +162,14 @@ class WorkPlace:
         for i, pack_task_part in enumerate(pack_task_parts):
             if pack_task_part in part_detections_parts:
                 self.cur_pack_task[i].set_status_as_detected()
+            else:
+                self.cur_pack_task[i].set_status_as_not_detected()
 
     def visualize_part_detections(self, frame):
 
         for part_detection in self.part_tracker.get_detections():
             shape = part_detection.object_shape
-            points = [shape.rect_box_center, shape.rect_tm_point, shape.rect_rm_point]
+            points = [shape.box_rect_center, shape.tm_point_rect, shape.rm_point_rect]
             points = [(point[0] + self.rect_table_corners['tl'][0],
                        point[1] + self.rect_table_corners['tl'][1]) for point in points]
 
@@ -175,12 +179,12 @@ class WorkPlace:
 
             color = self.generate_color_by_index(index)
 
-            rect_box = tuple((shape.rect_box[0] + self.rect_table_corners['tl'][0],
-                              shape.rect_box[1] + self.rect_table_corners['tl'][1],
-                              *shape.rect_box[2:]))
-            cv2.rectangle(frame, rect_box, (0, 0, 0), 2)
+            box_rect = tuple((shape.box_rect[0] + self.rect_table_corners['tl'][0],
+                              shape.box_rect[1] + self.rect_table_corners['tl'][1],
+                              *shape.box_rect[2:]))
+            cv2.rectangle(frame, box_rect, (0, 0, 0), 2)
 
-            distance_coeff = self.calculate_distance_coeff_by_point(shape.rect_box_center)
+            distance_coeff = self.calculate_distance_coeff_by_point(shape.box_rect_center)
             real_width = shape.width * distance_coeff
             real_height = shape.height * distance_coeff
 
@@ -261,22 +265,47 @@ class WorkPlace:
         table_part_of_frame = self.get_work_place_view_from_frame(frame)
         for box in self.opened_box_tracker.detections:
             cv2.rectangle(table_part_of_frame, box.object_shape.box_rect, (255, 0, 0), 2)
-            cv2.putText(table_part_of_frame, f'{box.fullness}', box.object_shape.box_rect_center, cv2.FONT_HERSHEY_COMPLEX, 0.7,
+            cv2.putText(table_part_of_frame, f'{PackBox.reversed_statuses[box.status]}', box.object_shape.box_rect_center, cv2.FONT_HERSHEY_COMPLEX, 0.7,
                         (255, 0, 0), 2)
 
         # for box in self.box_detector.opened_boxes:
         #     cv2.rectangle(table_part_of_frame, box.object_shape.rect_box, (255, 0, 0), 2)
         #     cv2.putText(table_part_of_frame, '_opened box_', box.object_shape.rect_box_center, cv2.FONT_HERSHEY_COMPLEX, 0.7, (255, 0, 0), 2)
 
-    def detect_boxes(self, frame):
-        table_part_of_frame = self.get_work_place_view_from_frame(frame)
-        if not self.opened_box_tracker.detections:
-            opened_box = self.box_detector.detect_opened_boxes(table_part_of_frame)
-            self.opened_box_tracker.update(table_part_of_frame)
-            self.opened_box_tracker.init(table_part_of_frame, opened_box)
+    def init_open_box(self, frame, opened_box_detections):
+        work_place_area = self.get_work_place_view_from_frame(frame)
+        print('opened_box_detections', self.opened_box_tracker.detections)
+        #print('new detections', opened_box_detections)
+        if opened_box_detections and not self.opened_box_tracker.detections:
+            opened_box_detections = [detection for detection in opened_box_detections if self.is_rect_on_the_table(detection[2])]
+            if opened_box_detections:
+                best_box_detection = max(opened_box_detections, key=lambda detection: detection[1])[2]
+                best_box_detection = self.transform_coords_in_table_axis(best_box_detection)
+
+                pack_box = PackBox(ObjectShape(((best_box_detection[0], best_box_detection[1]),
+                                                (best_box_detection[0] + best_box_detection[2], best_box_detection[1]),
+                                                (best_box_detection[0] + best_box_detection[2],
+                                                 best_box_detection[1] + best_box_detection[3]),
+                                                (best_box_detection[0], best_box_detection[1] + best_box_detection[3]))),
+                                   PackBox.statuses['Opened'])
+                self.opened_box_tracker.init(work_place_area, [pack_box])
+        self.opened_box_tracker.update(work_place_area)
 
         #closed_box = self.box_detector.detect_closed_boxes(table_part_of_frame)
 
         #self.box_detector.fitler_opened_boxes(table_part_of_frame, self.opened_box_tracker.detections)
 
+    def is_rect_on_the_table(self, rect):
+        tb = self.rect_work_place_corners
+        print(tb)
+        print(rect)
+        xs = rect[0] - rect[2] / 2, rect[0] + rect[2] / 2
+        ys = rect[1] - rect[3] / 2, rect[1] + rect[3] / 2
+        return all([tb['tl'][0] <= x <= tb['br'][0] for x in xs]) and all([tb['tl'][1] <= y <= tb['br'][1] for y in ys])
 
+    def transform_coords_in_table_axis(self, rect):
+        tb = self.rect_work_place_corners
+        rect = [rect[0] - rect[2] / 2, rect[1] - rect[3] / 2, *rect[2:]]
+        new_rect = (rect[0] - tb['tl'][0], rect[1] - tb['tl'][1], *rect[2:])
+        return new_rect
+    #def check_closed_boxes(self, closed_box_detections):
