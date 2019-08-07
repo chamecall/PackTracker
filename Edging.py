@@ -16,8 +16,8 @@ def find_contours(image, alignment_point=(0, 0)):
     edged = cv2.dilate(edged, None, iterations=1)
     edged = cv2.erode(edged, None, iterations=1)
 
-    cv2.imshow("Frame", edged)
-    cv2.waitKey()
+    # cv2.imshow("Frame", edged)
+    # cv2.waitKey()
 
     cnts = cv2.findContours(edged.copy(), cv2.RETR_EXTERNAL,
                             cv2.CHAIN_APPROX_SIMPLE)

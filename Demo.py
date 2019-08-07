@@ -83,7 +83,7 @@ camera = cv2.VideoCapture(args.input_video)
 
 cap_width = int(camera.get(cv2.CAP_PROP_FRAME_WIDTH))
 cap_height = int(camera.get(cv2.CAP_PROP_FRAME_HEIGHT))
-fps = camera.get(cv2.CAP_PROP_FPS) / 3
+fps = camera.get(cv2.CAP_PROP_FPS)
 vid_writer = cv2.VideoWriter('output.avi', cv2.VideoWriter_fourcc(*"FMP4"), fps,
                              (cap_width, cap_height))
 cv2.namedWindow("frame", cv2.WND_PROP_FULLSCREEN)
