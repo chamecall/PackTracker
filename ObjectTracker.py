@@ -22,7 +22,7 @@ class ObjectTracker:
         for i, tracker in enumerate(self.trackers):
             success, box = tracker.update(frame)
             if success:
-                self.detections[i].object_shape.box_rect = tuple(int(v if v >= 0 else 0) for v in box)
+                self.detections[i].object_shape.set_box_rect(tuple(int(v if v >= 0 else 0) for v in box))
             else:
                 del self.trackers[i]
                 del self.detections[i]
