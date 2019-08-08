@@ -19,10 +19,26 @@ class DataBase:
             with open(self.file_name, encoding=self.encoding) as self.file:
                 for line in self.file:
                     data = line.split("\t")
-                    self.db.insert({'№Pack': data[0], 'Date': data[1], 'WorkerName': data[2], 'Products': data[3],
-                                    'ProductsCount': data[4], 'PlacesCount': data[5], 'Multiplicity': data[6],
-                                    'Weight': data[7], 'GrossWeight': data[8], 'Volume': data[9], 'Length': data[10], 'Height': data[11],
-                                    'Depth': data[12].split('\n')[0]})
+                    # print(f"№Pack: {data[0]},")
+                    # print(f" Date:{data[1]},")
+                    # print(f" 'WorkerName': {data[2]},")
+                    # print(f"'Products': {data[3]},")
+
+                    # print(f"ProductsCount: {data[4]}, 'PlacesCount': {data[5]}, 'Multiplicity':{data[6]},")
+                    # print(f"'Weight': {data[7]}, 'GrossWeight': {data[8]}, 'Volume': {data[9]}, 'Length':{data[10]}, 'Height': {data[11]},")
+                    # print(f"'Depth': {data[12]}")
+                    if len(data) == 13:
+                        self.db.insert({'№Pack': data[0], 'Date': data[1], 'WorkerName': data[2], 'Products': data[3],
+                                        'ProductsCount': data[4], 'PlacesCount': data[5], 'Multiplicity': data[6],
+                                        'Weight': data[7], 'GrossWeight': data[8], 'Volume': data[9],
+                                        'Length': data[10], 'Height': data[11],
+                                        'Depth': data[12].split('\n')[0], 'Class': None})
+                    else:
+                        self.db.insert({'№Pack': data[0], 'Date': data[1], 'WorkerName': data[2], 'Products': data[3],
+                                        'ProductsCount': data[4], 'PlacesCount': data[5], 'Multiplicity': data[6],
+                                        'Weight': data[7], 'GrossWeight': data[8], 'Volume': data[9],
+                                        'Length': data[10], 'Height': data[11],
+                                        'Depth': data[12], 'Class': data[13].split('\n')[0]})
                 self.file.close()
         except IOError:
             print(f'File {self.file_name} not found.')

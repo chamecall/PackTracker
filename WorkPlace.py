@@ -13,6 +13,7 @@ from BoxDetector import BoxDetector
 from PackBox import PackBox
 from ObjectShape import ObjectShape
 
+
 def stretch_place_to_left(rect_table_corners):
     rect_table_corners['tl'][0] -= WorkPlace.WORKER_PLACE_SIZE
     return rect_table_corners
@@ -137,23 +138,12 @@ class WorkPlace:
             rect_work_place_corners['br'][1]
         return rect_work_place_corners
 
-    def calculate_distance_coeff_by_point(self, point):
-        point_x_ratio = point[0] / self.width
-        point_y_ratio = (self.width - point[1]) / self.height
-
-        distance_coeff_x = self.distance_coeff_width * point_x_ratio
-        distance_coeff_y = self.distance_coeff_height * point_y_ratio
-        point_distance_coeff = math.sqrt(distance_coeff_x ** 2 + distance_coeff_y ** 2)
-        point_distance_coeff += self.rect_table_corner_distance_coeffs['bl']
-        return point_distance_coeff
-
-    def detect_parts(self, frame, object_shapes: list):
-        # frame = self.get_table_view_from_frame(frame)
-        best_precision_part_detections = self.part_detector.detect(frame, self.cur_pack_task, object_shapes,
-                                                                   self.calculate_distance_coeff_by_point)
-
+    def detect_parts(self, frame, parts_detections: list):
+        if not parts_detections:
+            return
+        frame = self.get_table_view_from_frame(frame)
+        best_precision_part_detections = self.part_detector.detect(self.cur_pack_task, parts_detections)
         self.part_tracker.track(frame, best_precision_part_detections)
-
         self.update_pack_task_statuses()
 
     def update_pack_task_statuses(self):
@@ -265,35 +255,30 @@ class WorkPlace:
         table_part_of_frame = self.get_work_place_view_from_frame(frame)
         for box in self.opened_box_tracker.detections:
             cv2.rectangle(table_part_of_frame, box.object_shape.box_rect, (255, 0, 0), 2)
-            cv2.putText(table_part_of_frame, f'{PackBox.reversed_statuses[box.status]}', box.object_shape.box_rect_center, cv2.FONT_HERSHEY_COMPLEX, 0.7,
+            cv2.putText(table_part_of_frame, f'{PackBox.reversed_statuses[box.status]}',
+                        box.object_shape.box_rect_center, cv2.FONT_HERSHEY_COMPLEX, 0.7,
                         (255, 0, 0), 2)
 
-        # for box in self.box_detector.opened_boxes:
-        #     cv2.rectangle(table_part_of_frame, box.object_shape.rect_box, (255, 0, 0), 2)
-        #     cv2.putText(table_part_of_frame, '_opened box_', box.object_shape.rect_box_center, cv2.FONT_HERSHEY_COMPLEX, 0.7, (255, 0, 0), 2)
-
-    def init_open_box(self, frame, opened_box_detections):
+    def detect_opened_boxes(self, frame, opened_box_detections):
         work_place_area = self.get_work_place_view_from_frame(frame)
-        print('opened_box_detections', self.opened_box_tracker.detections)
-        #print('new detections', opened_box_detections)
-        if opened_box_detections and not self.opened_box_tracker.detections:
-            opened_box_detections = [detection for detection in opened_box_detections if self.is_rect_on_the_table(detection[2])]
-            if opened_box_detections:
-                best_box_detection = max(opened_box_detections, key=lambda detection: detection[1])[2]
-                best_box_detection = self.transform_coords_in_table_axis(best_box_detection)
+        pack_box = self.get_pack_box_from_boxes(opened_box_detections, PackBox.statuses['Opened'])
+        self.opened_box_tracker.track(work_place_area, pack_box)
 
-                pack_box = PackBox(ObjectShape(((best_box_detection[0], best_box_detection[1]),
-                                                (best_box_detection[0] + best_box_detection[2], best_box_detection[1]),
-                                                (best_box_detection[0] + best_box_detection[2],
-                                                 best_box_detection[1] + best_box_detection[3]),
-                                                (best_box_detection[0], best_box_detection[1] + best_box_detection[3]))),
-                                   PackBox.statuses['Opened'])
-                self.opened_box_tracker.init(work_place_area, [pack_box])
-        self.opened_box_tracker.update(work_place_area)
+    def detect_closed_boxes(self, frame, closed_box_detections):
+        work_place_area = self.get_work_place_view_from_frame(frame)
+        pack_box = self.get_pack_box_from_boxes(closed_box_detections, PackBox.statuses['Closed'])
+        self.opened_box_tracker.track(work_place_area, pack_box)
 
-        #closed_box = self.box_detector.detect_closed_boxes(table_part_of_frame)
+    def get_pack_box_from_boxes(self, box_detections, status):
+        opened_box_detections = [detection for detection in box_detections if
+                                 self.is_rect_on_the_table(detection[2])]
+        pack_box = []
+        if opened_box_detections:
+            best_box_detection = max(opened_box_detections, key=lambda detection: detection[1])[2]
+            best_box_detection = self.transform_coords_in_table_axis(best_box_detection)
 
-        #self.box_detector.fitler_opened_boxes(table_part_of_frame, self.opened_box_tracker.detections)
+            pack_box = [PackBox(ObjectShape(best_box_detection), status)]
+        return pack_box
 
     def is_rect_on_the_table(self, rect):
         tb = self.rect_work_place_corners
@@ -308,4 +293,13 @@ class WorkPlace:
         rect = [rect[0] - rect[2] / 2, rect[1] - rect[3] / 2, *rect[2:]]
         new_rect = (rect[0] - tb['tl'][0], rect[1] - tb['tl'][1], *rect[2:])
         return new_rect
-    #def check_closed_boxes(self, closed_box_detections):
+
+    # def check_closed_boxes(self, closed_box_detections):
+
+    def detect_boxes(self, frame, boxes_detections):
+        if not self.opened_box_tracker.detections:
+            boxes_detections = tuple(detection for detection in boxes_detections if detection[0] == 'pb_open')
+            self.detect_opened_boxes(frame, boxes_detections)
+        else:
+            boxes_detections = tuple(detection for detection in boxes_detections if detection[0] == 'pb_closed')
+            self.detect_closed_boxes(frame, boxes_detections)
