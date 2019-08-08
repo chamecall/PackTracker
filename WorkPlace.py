@@ -141,10 +141,16 @@ class WorkPlace:
     def detect_parts(self, frame, parts_detections: list):
         if not parts_detections:
             return
-        frame = self.get_table_view_from_frame(frame)
         best_precision_part_detections = self.part_detector.detect(self.cur_pack_task, parts_detections)
+        frame = self.get_work_place_view_from_frame(frame)
+        self.move_detection_coords_to_table_area(best_precision_part_detections)
         self.part_tracker.track(frame, best_precision_part_detections)
         self.update_pack_task_statuses()
+
+    def move_detection_coords_to_table_area(self, detections):
+        for detection in detections:
+            detection.object_shape.box_rect = self.transform_coords_in_table_axis(detection.object_shape.box_rect)
+
 
     def update_pack_task_statuses(self):
         pack_task_parts = [pack_task_item.part for pack_task_item in self.cur_pack_task]
@@ -160,8 +166,7 @@ class WorkPlace:
         for part_detection in self.part_tracker.get_detections():
             shape = part_detection.object_shape
             points = [shape.box_rect_center, shape.tm_point_rect, shape.rm_point_rect]
-            points = [(point[0] + self.rect_table_corners['tl'][0],
-                       point[1] + self.rect_table_corners['tl'][1]) for point in points]
+
 
             print_pos, index = \
                 [(next_pack_task.print_pos, next_pack_task.index) for next_pack_task in self.cur_pack_task if
@@ -169,21 +174,15 @@ class WorkPlace:
 
             color = self.generate_color_by_index(index)
 
-            box_rect = tuple((shape.box_rect[0] + self.rect_table_corners['tl'][0],
-                              shape.box_rect[1] + self.rect_table_corners['tl'][1],
-                              *shape.box_rect[2:]))
-            cv2.rectangle(frame, box_rect, (0, 0, 0), 2)
-
-            distance_coeff = self.calculate_distance_coeff_by_point(shape.box_rect_center)
-            real_width = shape.width * distance_coeff
-            real_height = shape.height * distance_coeff
+            cv2.rectangle(frame, shape.box_rect, (0, 0, 255), 2)
 
             def putText(x, y, value: float):
                 cv2.putText(frame, f'{int(value)} mm', (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.65, (255, 0, 0), 2)
 
-            putText(points[1][0] - 15, points[1][1] - 10, real_height)
-            putText(points[2][0] + 10, points[2][1], real_width)
-
+            putText(points[1][0] - 15, points[1][1] - 10, shape.box_rect[3])
+            putText(points[2][0] + 10, points[2][1], shape.box_rect[2])
+            print(print_pos)
+            print(index)
             print_pos = (print_pos[0] - 3, int(print_pos[1] + WorkPlace.line_height_size / 2 - 1))
             cv2.circle(frame, print_pos, 3, color, -1)
             cv2.circle(frame, points[0], 3, color, -1)
@@ -290,11 +289,8 @@ class WorkPlace:
 
     def transform_coords_in_table_axis(self, rect):
         tb = self.rect_work_place_corners
-        rect = [rect[0] - rect[2] / 2, rect[1] - rect[3] / 2, *rect[2:]]
         new_rect = (rect[0] - tb['tl'][0], rect[1] - tb['tl'][1], *rect[2:])
         return new_rect
-
-    # def check_closed_boxes(self, closed_box_detections):
 
     def detect_boxes(self, frame, boxes_detections):
         if not self.opened_box_tracker.detections:

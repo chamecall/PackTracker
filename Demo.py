@@ -101,12 +101,21 @@ box_detector = Detector('/home/algernon/PycharmProjects/test/boxes_detections.js
 
 part_detector = Detector('/home/algernon/PycharmProjects/test/parts_detections.json')
 print(len(part_detector.detections))
+frame_number = 1
 while True:
     captured, frame = camera.read()
     if not captured:
         break
+    box_detections = []
+    part_detections = []
+    frame_num = camera.get(cv2.CAP_PROP_POS_FRAMES)
+    print(frame_number)
+    frame_number += 1
+    print(frame_num)
+    #if frame_num % 3 == 0:
     box_detections = box_detector.get_detections_per_frame()
     part_detections = part_detector.get_detections_per_frame()
+
     for work_place in work_places:
 
         if work_place.next_pack_task_time and \
@@ -119,13 +128,13 @@ while True:
 
         # cv2.imshow(f'{work_place.packer}', table_part_of_frame)
         # cv2.waitKey(1)
-
+        frame = work_place.apply_tasks_on_frame(frame)
         work_place.detect_parts(frame, part_detections)
         work_place.detect_boxes(frame, box_detections)
 
-        # work_place.visualize_part_detections(frame)
+        work_place.visualize_part_detections(frame)
         work_place.visualize_box_detections(frame)
-        frame = work_place.apply_tasks_on_frame(frame)
+
 
     # print out our time
     cv2.putText(frame, format_time_to_str(current_time), (90, 150), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (255, 255, 255), 2)

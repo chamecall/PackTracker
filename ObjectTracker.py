@@ -44,24 +44,7 @@ class ObjectTracker:
                     return
 
             tracker = cv2.TrackerMedianFlow_create()
-
+            print(new_box)
             tracker.init(frame, new_box)
             self.trackers.append(tracker)
             self.detections.append(new_detection)
-
-    def init_new_box(self, frame, new_box):
-        new_box = new_box.object_shape.box_rect
-        if self.detections:
-            new_box_center = new_box.object_shape.box_rect_center
-            detected_box_centers = (part_detection.object_shape.box_rect_center for part_detection in
-                                    self.detections)
-            is_box_valid = all([int(dist.euclidean(new_box_center, old_box_center)) > self.distance_threshold \
-                                for old_box_center in detected_box_centers])
-            if not is_box_valid:
-                return
-
-        tracker = cv2.TrackerMedianFlow_create()
-
-        tracker.init(frame, new_box)
-        self.trackers.append(tracker)
-        self.detections.append(new_box)

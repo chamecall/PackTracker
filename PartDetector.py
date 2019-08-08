@@ -5,8 +5,8 @@ import numpy as np
 from ObjectShape import ObjectShape
 
 class PartDetector:
-    def __init__(self, precision_threshold=0.8):
-        self.precision_threshold = precision_threshold
+    def __init__(self, ):
+        pass
 
     def detect(self, pack_tasks, parts_detections):
         best_precision_detections = []

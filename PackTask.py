@@ -12,6 +12,7 @@ class PackTask:
         self.amount = amount
         self.index = index
         self.part_class = part_class
+        self.print_pos = ()
 
     def is_detected(self):
         return self.status == PackTask.statuses['Detected']
