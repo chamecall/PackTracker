@@ -1,6 +1,7 @@
 from collections import deque
 import cv2
 
+
 def are_rectangles_intersect(first_rectangle, second_rectangle, shift=0):
     if first_rectangle[0][0] > second_rectangle[1][0] + shift or second_rectangle[0][0] > \
             first_rectangle[1][0] + shift:
@@ -73,7 +74,6 @@ def restrict_rectangle_areas_by_another_rectangle(areas, bounding_area):
     if not areas:
         return []
 
-
     if not bounding_area:
         return areas
 
@@ -102,6 +102,7 @@ def calculate_two_sizes_match_precision(matched_object: tuple, reference: tuple)
 def midpoint(ptA, ptB):
     return int((ptA[0] + ptB[0]) * 0.5), int((ptA[1] + ptB[1]) * 0.5)
 
+
 def set_better_channel(img, clpLim=3.0, tileGridSize=(8, 8)):
     lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
     l, a, b = cv2.split(lab)
@@ -114,10 +115,12 @@ def set_better_channel(img, clpLim=3.0, tileGridSize=(8, 8)):
     final = cv2.cvtColor(limg, cv2.COLOR_LAB2BGR)
     return final
 
-#restrict_rectangle_areas_by_another_ones(movement_rects, table_areas)
-def rect_square(rect_a):
-    '''
 
-    :param rect_a: Example(
-    :return:
-    '''
+def rect_square(rect_a):
+    # rect of format (tl_point, br_point)
+    return (rect_a[1][0] - rect_a[0][0]) * (rect_a[1][1] - rect_a[0][1])
+
+
+def is_point_in_rect(point, rect):
+    # rect - (tl, br)
+    return is_num_in_range(point[0], (rect[0][0], rect[1][0])) and is_num_in_range(point[1], (rect[0][1], rect[1][1]))

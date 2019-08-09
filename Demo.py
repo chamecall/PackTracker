@@ -88,7 +88,7 @@ cv2.namedWindow("frame", cv2.WND_PROP_FULLSCREEN)
 cv2.setWindowProperty("frame", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
 
 db = DataBase()
-reader = JsonReader('/home/algernon/PycharmProjects/test/origin_json')
+hand_detector = JsonReader('/home/algernon/PycharmProjects/test/origin_json')
 
 current_time = format_time_from_str('7/1/2019 13:16:33')
 work_places = initialize_work_places()
@@ -101,7 +101,7 @@ while True:
         break
     box_detections = []
     part_detections = []
-
+    hands_detections = hand_detector.read()
     box_detections = box_detector.get_detections_per_frame()
     part_detections = part_detector.get_detections_per_frame()
 
@@ -118,16 +118,18 @@ while True:
         # cv2.waitKey(1)
         if not work_place.pack_task_completed:
             frame = work_place.apply_tasks_on_frame(frame)
+
+            work_place.detect_hands(hands_detections)
             work_place.detect_parts(frame, part_detections)
             work_place.detect_boxes(frame, box_detections)
 
             work_place.visualize_part_detections(frame)
             work_place.visualize_box_detections(frame)
+            work_place.visualize_hand_detections(frame)
 
 
     # print out our time
     #cv2.putText(frame, format_time_to_str(current_time), (90, 80), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (255, 255, 255), 2)
-    reader.read(frame)
     cv2.imshow('frame', frame)
     vid_writer.write(frame)
     cv2.waitKey(1)

@@ -52,7 +52,7 @@ class ObjectTracker:
                 if not is_box_valid:
                     return
 
-            tracker = cv2.TrackerCSRT_create()
+            tracker = cv2.TrackerMedianFlow_create()
             tracker.init(frame, new_box)
             self.trackers.append(tracker)
             self.detections.append(new_detection)

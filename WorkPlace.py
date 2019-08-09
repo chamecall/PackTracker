@@ -12,8 +12,8 @@ from PartDetector import PartDetector
 from BoxDetector import BoxDetector
 from PackBox import PackBox
 from ObjectShape import ObjectShape
-from Utils import are_rectangles_intersect, rectangles_intersection
-
+from Utils import are_rectangles_intersect, rectangles_intersection, rect_square, is_point_in_rect
+from Hands import Hands
 
 def stretch_place_to_left(rect_table_corners):
     rect_table_corners['tl'][0] -= WorkPlace.WORKER_PLACE_SIZE
@@ -69,7 +69,7 @@ class WorkPlace:
 
     def __init__(self, packer, table_corners: tuple, packing_side,
                  frame_size=(1366, 768)):
-        # self.worker_hands = Hands
+        self.worker_hands = Hands()
         self.all_parts_are_in_box = False
         self.pack_task_completed = False
         self.part_detections = []
@@ -156,8 +156,12 @@ class WorkPlace:
             for i, tracked_part_detection in tracked_part_detections:
                 part_box_rect = tracked_part_detection.object_shape.tl_box_rect
                 if are_rectangles_intersect(box_rect, part_box_rect):
-                   # print(int(rectangles_intersection(box_rect, part_box_rect) / part_box_rect * 100))
-                    self.part_detections[i].set_status_as_in_box()
+                    percent_intersection = int(rect_square(rectangles_intersection(box_rect, part_box_rect)) / rect_square(part_box_rect) * 100)
+                    # 30 is an intersection of the part and the box in percent to consider part inside of the box
+                    print(percent_intersection)
+
+                    if percent_intersection > 30:
+                        self.part_detections[i].set_status_as_in_box()
 
     def update_undetected_pack_items(self):
         pack_task_parts = [pack_task_item.part for pack_task_item in self.cur_pack_task]
@@ -289,6 +293,11 @@ class WorkPlace:
         ys = rect[1] - rect[3] / 2, rect[1] + rect[3] / 2
         return all([tb['tl'][0] <= x <= tb['br'][0] for x in xs]) and all([tb['tl'][1] <= y <= tb['br'][1] for y in ys])
 
+    def is_point_in_work_place(self, point):
+        tb = self.rect_work_place_corners
+        return is_num_in_range(point[0], (tb['tl'][0], tb['br'][0])) and is_num_in_range(point[1],
+                                                                                       (tb['tl'][1], tb['br'][1]))
+
     def transform_coords_in_work_place_axis(self, rect):
         tb = self.rect_work_place_corners
         new_rect = (rect[0] - tb['tl'][0], rect[1] - tb['tl'][1], *rect[2:])
@@ -311,3 +320,15 @@ class WorkPlace:
             box_is_closed = self.detect_closed_boxes(frame, boxes_detections)
             if box_is_closed:
                 self.pack_task_completed = True
+
+    def visualize_hand_detections(self, frame):
+        self.worker_hands.draw_skeleton(frame)
+
+    def detect_hands(self, hands_detections):
+        for hands_detection in hands_detections:
+            for point in hands_detection.values():
+                if not point:
+                    continue
+                if self.is_point_in_work_place(point):
+                    self.worker_hands.set_new_points(hands_detection)
+                break
