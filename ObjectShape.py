@@ -17,3 +17,7 @@ class ObjectShape:
         self.tm_point_rect = int(rect[0] + rect[2] / 2), rect[1]
         self.rm_point_rect = rect[0] + rect[2], int(rect[1] + rect[3] / 2)
 
+    def get_tl_box_rect(self):
+        return (self.box_rect[0], self.box_rect[1]), (self.box_rect[0] + self.box_rect[2], self.box_rect[1] + self.box_rect[3])
+
+    tl_box_rect = property(get_tl_box_rect)

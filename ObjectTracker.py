@@ -7,13 +7,14 @@ from PartDetection import PartDetection
 from ObjectShape import ObjectShape
 from scipy.spatial import distance as dist
 from Part import Part
-
+from collections import deque
 
 class ObjectTracker:
     def __init__(self, distance_threshold=50):
         self.trackers = []
         self.detections = []
         self.distance_threshold = distance_threshold
+        self.shift_histories = []
 
     def get_detections(self):
         return self.detections
@@ -22,14 +23,22 @@ class ObjectTracker:
         for i, tracker in enumerate(self.trackers):
             success, box = tracker.update(frame)
             if success:
+                old_center = self.detections[i].object_shape.box_rect_center
                 self.detections[i].object_shape.set_box_rect(tuple(int(v if v >= 0 else 0) for v in box))
+                new_center = self.detections[i].object_shape.box_rect_center
+                shift = dist.cdist([new_center], [old_center])[0][0]
+
+                self.shift_histories[i].append(shift)
             else:
                 del self.trackers[i]
                 del self.detections[i]
+                del self.shift_histories[i]
+        return self.detections
 
     def track(self, frame, new_detections):
         self.update(frame)
         self.init(frame, new_detections)
+        return self.detections
 
     def init(self, frame, new_detections):
         for new_detection in new_detections:
@@ -43,8 +52,10 @@ class ObjectTracker:
                 if not is_box_valid:
                     return
 
-            tracker = cv2.TrackerMedianFlow_create()
-            print(new_box)
+            tracker = cv2.TrackerCSRT_create()
             tracker.init(frame, new_box)
             self.trackers.append(tracker)
             self.detections.append(new_detection)
+            deq = deque(maxlen=5)
+            deq.append(0)
+            self.shift_histories.append(deq)

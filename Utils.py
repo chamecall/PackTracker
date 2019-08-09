@@ -115,3 +115,9 @@ def set_better_channel(img, clpLim=3.0, tileGridSize=(8, 8)):
     return final
 
 #restrict_rectangle_areas_by_another_ones(movement_rects, table_areas)
+def rect_square(rect_a):
+    '''
+
+    :param rect_a: Example(
+    :return:
+    '''

@@ -42,12 +42,10 @@ def initialize_work_places():
         work_place.set_cur_pack_task(task)
         work_place.set_next_pack_task_time(format_time_from_str(next_task_time))
 
-    work_places = (WorkPlace('Муртазин Руслан Минислямович', ((560, 200), (1072, 200), (1057, 978), (502, 958)), 'Left',
-                             (2.1, 2.2, 1.9, 1.8),
+    work_places = (WorkPlace('Муртазин Руслан Минислямович', ((560, 100), (1072, 100), (1057, 978), (502, 958)), 'Left',
                              frame_size=(1920, 1080)),
-                   WorkPlace('Бакшеев Александр Николаевич', ((1150, 214), (1605, 240), (1627, 1061), (1150, 1043)),
-                             'Right', (2.2, 2.3, 2.0, 1.9),
-                             frame_size=(1920, 1080))
+                   WorkPlace('Бакшеев Александр Николаевич', ((1150, 100), (1605, 100), (1627, 1061), (1150, 1043)),
+                             'Right', frame_size=(1920, 1080))
                    )
 
     cur_task, next_task_time = PackTask.get_pack_tasks(db, '7/1/2019 13:16:42',
@@ -83,14 +81,14 @@ camera = cv2.VideoCapture(args.input_video)
 
 cap_width = int(camera.get(cv2.CAP_PROP_FRAME_WIDTH))
 cap_height = int(camera.get(cv2.CAP_PROP_FRAME_HEIGHT))
-fps = camera.get(cv2.CAP_PROP_FPS)
+fps = camera.get(cv2.CAP_PROP_FPS) / 3
 vid_writer = cv2.VideoWriter('output.avi', cv2.VideoWriter_fourcc(*"FMP4"), fps,
                              (cap_width, cap_height))
 cv2.namedWindow("frame", cv2.WND_PROP_FULLSCREEN)
 cv2.setWindowProperty("frame", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
 
 db = DataBase()
-reader = JsonReader('/home/chame/PycharmProjects/PackTracker/origin_json')
+reader = JsonReader('/home/algernon/PycharmProjects/test/origin_json')
 
 current_time = format_time_from_str('7/1/2019 13:16:33')
 work_places = initialize_work_places()
@@ -116,18 +114,19 @@ while True:
             work_place.set_next_pack_task_time(format_time_from_str(next_task_time))
             work_place.reset_pack_task()
 
-        # cv2.imshow(f'{work_place.packer}', table_part_of_frame)
+        # cv2.imshow(f'{work_place.packer}', work_place.get_work_place_view_from_frame(frame))
         # cv2.waitKey(1)
-        frame = work_place.apply_tasks_on_frame(frame)
-        work_place.detect_parts(frame, part_detections)
-        work_place.detect_boxes(frame, box_detections)
+        if not work_place.pack_task_completed:
+            frame = work_place.apply_tasks_on_frame(frame)
+            work_place.detect_parts(frame, part_detections)
+            work_place.detect_boxes(frame, box_detections)
 
-        work_place.visualize_part_detections(frame)
-        work_place.visualize_box_detections(frame)
+            work_place.visualize_part_detections(frame)
+            work_place.visualize_box_detections(frame)
 
 
     # print out our time
-    cv2.putText(frame, format_time_to_str(current_time), (90, 150), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (255, 255, 255), 2)
+    #cv2.putText(frame, format_time_to_str(current_time), (90, 80), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (255, 255, 255), 2)
     reader.read(frame)
     cv2.imshow('frame', frame)
     vid_writer.write(frame)
