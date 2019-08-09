@@ -4,6 +4,7 @@ from ObjectShape import ObjectShape
 
 class PartDetection:
     statuses = {'Tracked': 0, 'Moved': 1, 'InBox': 2}
+    reversed_statuses = {value: key for key, value in statuses.items()}
 
     def __init__(self, part: Part, object_shape: ObjectShape, status=statuses['Tracked']):
         self.part = part
@@ -27,3 +28,4 @@ class PartDetection:
 
     def set_status_as_in_box(self):
         self.status = PartDetection.statuses['InBox']
+

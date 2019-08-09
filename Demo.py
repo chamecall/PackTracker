@@ -15,7 +15,7 @@ from datetime import datetime, timedelta
 import argparse
 from JsonDirReader import JsonReader
 from Detector import Detector
-
+from PartDetection import PartDetection
 
 def update_time():
     global fps, current_time
@@ -116,8 +116,8 @@ while True:
 
         # cv2.imshow(f'{work_place.packer}', work_place.get_work_place_view_from_frame(frame))
         # cv2.waitKey(1)
+        frame = work_place.apply_tasks_on_frame(frame)
         if not work_place.pack_task_completed:
-            frame = work_place.apply_tasks_on_frame(frame)
 
             work_place.detect_hands(hands_detections)
             work_place.detect_parts(frame, part_detections)
@@ -127,9 +127,13 @@ while True:
             work_place.visualize_box_detections(frame)
             work_place.visualize_hand_detections(frame)
 
+        if work_place.pack_task_completed and work_place.show_after_completion:
+            work_place.visualize_closed_box(frame)
+            work_place.visualize_hand_detections(frame)
 
-    # print out our time
+            #print([PartDetection.reversed_statuses[part.status] for part in work_place.all_visible_parts])
     #cv2.putText(frame, format_time_to_str(current_time), (90, 80), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (255, 255, 255), 2)
+
     cv2.imshow('frame', frame)
     vid_writer.write(frame)
     cv2.waitKey(1)

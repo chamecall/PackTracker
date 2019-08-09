@@ -40,6 +40,16 @@ class ObjectTracker:
         self.init(frame, new_detections)
         return self.detections
 
+    def del_tracker(self, part):
+        index = [detection.part for detection in self.detections].index(part)
+        del self.trackers[index]
+        del self.detections[index]
+        del self.shift_histories[index]
+
+    def get_shift_histories_by_part(self, part: Part):
+        index = [detection.part for detection in self.detections].index(part)
+        return self.shift_histories[index]
+
     def init(self, frame, new_detections):
         for new_detection in new_detections:
             new_box = new_detection.object_shape.box_rect
@@ -52,10 +62,12 @@ class ObjectTracker:
                 if not is_box_valid:
                     return
 
-            tracker = cv2.TrackerMedianFlow_create()
+            tracker = cv2.TrackerCSRT_create()
             tracker.init(frame, new_box)
             self.trackers.append(tracker)
             self.detections.append(new_detection)
             deq = deque(maxlen=5)
             deq.append(0)
             self.shift_histories.append(deq)
+
+
