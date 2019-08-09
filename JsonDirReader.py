@@ -1,6 +1,7 @@
 import json
 from os import walk
 import os
+import cv2
 
 class JsonReader:
     def __init__(self, dir_name):
@@ -13,22 +14,20 @@ class JsonReader:
 
         self.required_pairs = (
             ['Neck', 'RShoulder'], ['Neck', 'LShoulder'], ['RShoulder', 'RElbow'], ['LShoulder', 'LElbow'],
-            ['RElbow', 'RWrist'], ['LElbow', 'LWrist'],
-            ['Neck', 'MidHip'],
-            ['MidHip', 'LHip'], ['MidHip', 'RHip'], ['RHip', 'RKnee'], ['LHip', 'LKnee'], ['LKnee', 'LAnkle'],
-            ['RKnee', 'RAnkle'])
+            ['RElbow', 'RWrist'], ['LElbow', 'LWrist'])
 
-    def read(self):
+    def read(self, frame):
         self.json_file_num += 1
         filename = self.json_files[self.json_file_num]
         full_filename_path = os.path.join(self.json_dir, filename)
-        points = []
+        points = {}
         with open(full_filename_path, "r") as json_data:
             data = json.load(json_data)
 
             if data['people']:
                 points_list = data['people'][0]['pose_keypoints_2d']
                 points = self.extract_required_json_points(points_list, self.required_points)
+        self.draw_skeleton(frame, points)
 
         return points
 
@@ -55,5 +54,22 @@ class JsonReader:
                 points[joint] = (x, y)
         return points
 
-reader = JsonReader('/home/algernon/PycharmProjects/test/origin_json')
-print(reader.read())
+    def draw_skeleton(self, frame, points, line_color=(0, 0, 255), circle_color=(0, 0, 255), radius=8,
+                      line_thickness=3):
+
+        for pair in self.required_pairs:
+            part_a = pair[0]
+            part_b = pair[1]
+
+            if points.get(part_a) and points.get(part_b):
+                cv2.line(frame, points[part_a], points[part_b], line_color, line_thickness, lineType=cv2.LINE_AA)
+                draw_point(frame, points[part_a], circle_color, radius)
+                draw_point(frame, points[part_b], circle_color, radius)
+
+
+
+def draw_point(frame, point, color, radius):
+    cv2.circle(frame, (point[0], point[1]), radius, color, thickness=-1, lineType=cv2.FILLED)
+
+# reader = JsonReader('/home/algernon/PycharmProjects/test/origin_json')
+# print(reader.read())

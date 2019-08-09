@@ -38,6 +38,6 @@ class PackTask:
                 break
 
             part = Part(item['Products'].split(',')[1], int(item['Length']), int(item['Depth']), int(item['Height']),
-                        int(item['ProductsCount']))
+                        int(item['ProductsCount']), item['№Pack'])
             pack_tasks.append(PackTask(part, int(item['ProductsCount']), i, item['Class']), )
         return pack_tasks, f'{next_task_time}'

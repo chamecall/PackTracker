@@ -55,6 +55,7 @@ class WorkPlace:
 
     font = ImageFont.truetype("arial.ttf", 16)
     bold_font = ImageFont.truetype("arial_bold.ttf", 16)
+    large_font = ImageFont.truetype("arial.ttf", 20)
     line_height_size = 20
 
     def get_table_view_from_frame(self, frame: np.ndarray):
@@ -178,8 +179,6 @@ class WorkPlace:
 
             putText(points[1][0] - 15, points[1][1] - 10, shape.box_rect[3])
             putText(points[2][0] + 10, points[2][1], shape.box_rect[2])
-            print(print_pos)
-            print(index)
             print_pos = (print_pos[0] - 3, int(print_pos[1] + WorkPlace.line_height_size / 2 - 1))
             cv2.circle(frame, print_pos, 3, color, -1)
             cv2.circle(frame, points[0], 3, color, -1)
@@ -195,13 +194,23 @@ class WorkPlace:
             draw.text((x, y), f"{task.part.name} ({task.amount}), "
             f"{task.part.height}x{task.part.width}x{task.part.depth}", color, font=font)
 
+        def draw_name_info(x, y, name, pack_number, color):
+            font = WorkPlace.large_font
+            draw.text((x, y), f"{name} - {pack_number}", color, font=font)
+
         x_value, y_value = None, None
+        name = ''
         if self.packing_side == 'Left':
-            y_value = 0
+            name = 'Бакшеев Александр Николаевич'
+            y_value = 165
             x_value = 5
         elif self.packing_side == 'Right':
-            y_value = 0
-            x_value = frame.shape[1] - 350
+            name = 'Муртазин Руслан Минислямович'
+            y_value = 165
+            x_value = frame.shape[1] - 450
+
+        pack_number = self.cur_pack_task[0].part.pack_number
+        draw_name_info(x_value, 10, name, pack_number, (0, 255, 255))
 
         for cur_task in self.cur_pack_task:
             bold = False
@@ -283,8 +292,7 @@ class WorkPlace:
 
     def is_rect_on_the_table(self, rect):
         tb = self.rect_work_place_corners
-        print(tb)
-        print(rect)
+
         xs = rect[0] - rect[2] / 2, rect[0] + rect[2] / 2
         ys = rect[1] - rect[3] / 2, rect[1] + rect[3] / 2
         return all([tb['tl'][0] <= x <= tb['br'][0] for x in xs]) and all([tb['tl'][1] <= y <= tb['br'][1] for y in ys])

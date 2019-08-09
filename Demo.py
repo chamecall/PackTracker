@@ -13,7 +13,7 @@ from matplotlib import cm
 from PIL import ImageFont, ImageDraw, Image
 from datetime import datetime, timedelta
 import argparse
-from Utils import set_better_channel
+from JsonDirReader import JsonReader
 from Detector import Detector
 
 
@@ -52,12 +52,10 @@ def initialize_work_places():
 
     cur_task, next_task_time = PackTask.get_pack_tasks(db, '7/1/2019 13:16:42',
                                                        work_places[0].packer)
-    print(cur_task)
     set_work_place_task(work_places[0], cur_task, next_task_time)
 
     cur_task, next_task_time = PackTask.get_pack_tasks(db, '7/1/2019 13:17:04',
                                                        work_places[1].packer)
-    print(cur_task)
     set_work_place_task(work_places[1], cur_task, next_task_time)
 
     return work_places
@@ -82,8 +80,6 @@ MINIMUM_DISTANCE_BETWEEN_RECTANGLES = 300
 time_format = '%m/%d/%Y %H:%M:%S'
 
 camera = cv2.VideoCapture(args.input_video)
-length = int(camera.get(cv2.CAP_PROP_FRAME_COUNT))
-print( length )
 
 cap_width = int(camera.get(cv2.CAP_PROP_FRAME_WIDTH))
 cap_height = int(camera.get(cv2.CAP_PROP_FRAME_HEIGHT))
@@ -94,30 +90,24 @@ cv2.namedWindow("frame", cv2.WND_PROP_FULLSCREEN)
 cv2.setWindowProperty("frame", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
 
 db = DataBase()
+reader = JsonReader('/home/chame/PycharmProjects/PackTracker/origin_json')
+
 current_time = format_time_from_str('7/1/2019 13:16:33')
 work_places = initialize_work_places()
 
-box_detector = Detector('/home/algernon/PycharmProjects/test/boxes_detections.json')
-
-part_detector = Detector('/home/algernon/PycharmProjects/test/parts_detections.json')
-print(len(part_detector.detections))
-frame_number = 1
+box_detector = Detector('boxes_detections.json')
+part_detector = Detector('parts_detections.json')
 while True:
     captured, frame = camera.read()
     if not captured:
         break
     box_detections = []
     part_detections = []
-    frame_num = camera.get(cv2.CAP_PROP_POS_FRAMES)
-    print(frame_number)
-    frame_number += 1
-    print(frame_num)
-    #if frame_num % 3 == 0:
+
     box_detections = box_detector.get_detections_per_frame()
     part_detections = part_detector.get_detections_per_frame()
 
     for work_place in work_places:
-
         if work_place.next_pack_task_time and \
                 current_time >= work_place.next_pack_task_time:
             cur_task, next_task_time = PackTask.get_pack_tasks(db, format_time_to_str(current_time),
@@ -138,7 +128,7 @@ while True:
 
     # print out our time
     cv2.putText(frame, format_time_to_str(current_time), (90, 150), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (255, 255, 255), 2)
-
+    reader.read(frame)
     cv2.imshow('frame', frame)
     vid_writer.write(frame)
     cv2.waitKey(1)

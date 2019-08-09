@@ -91,7 +91,7 @@ if os.name == "nt":
             if tmp in ["1", "true", "yes", "on"]:
                 raise ValueError("ForceCPU")
             else:
-                print("Flag value '"+tmp+"' not forcing CPU mode")
+                "Flag value '"+tmp+"' not forcing CPU mode")
         except KeyError:
             # We never set the flag
             if 'CUDA_VISIBLE_DEVICES' in envKeys:
