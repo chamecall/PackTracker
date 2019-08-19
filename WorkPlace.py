@@ -15,6 +15,7 @@ from ObjectShape import ObjectShape
 from Utils import are_rectangles_intersect, rectangles_intersection, rect_square, is_point_in_rect
 from Hands import Hands
 from scipy.spatial import distance as dist
+from Animator import Animator
 
 
 def stretch_place_to_left(rect_table_corners):
@@ -71,6 +72,7 @@ class WorkPlace:
 
     def __init__(self, packer, table_corners: tuple, packing_side,
                  frame_size=(1366, 768)):
+        self.animator = Animator(30)
         self.final_num_frames = WorkPlace.FINAL_FRAMES_NUM
         self.show_after_completion = True
         self.part_detections = []
@@ -140,12 +142,13 @@ class WorkPlace:
             return
 
         frame = self.get_work_place_view_from_frame(frame)
+
         parts_detections = [detection for detection in parts_detections if self.is_rect_in_work_place(detection[2])]
         best_detections = self.part_detector.detect(self.cur_pack_task, parts_detections)
         table_best_detections = []
         for best_detection in best_detections:
             best_detection.object_shape.set_box_rect(
-                self.transform_coords_in_work_place_axis(best_detection.object_shape.box_rect))
+                self.transform_coords_from_whole_frame_to_work_place_axis(best_detection.object_shape.box_rect))
             table_best_detections.append(best_detection)
 
         self.part_detections = self.part_tracker.track(frame, table_best_detections)
@@ -174,7 +177,7 @@ class WorkPlace:
                         rect_square(rectangles_intersection(box_rect, part_box_rect)) / rect_square(
                             part_box_rect) * 100)
                     # 30 is an intersection of the part and the box in percent to consider part inside of the box
-                    if percent_intersection > 80:
+                    if percent_intersection > 40:
                         self.all_visible_parts[i].set_status_as_in_box()
                         self.part_tracker.del_tracker(self.all_visible_parts[i].part)
                         del tracked_part_detections[j]
@@ -182,8 +185,8 @@ class WorkPlace:
             # make sure that worker moved only one item per time into the box
             assert len(moved_part_detections) < 2
             for i, moved_part_detection in moved_part_detections:
-
-                if is_point_in_rect(self.get_active_wrist_point(), box_rect):
+                wrist_point, _ = self.get_active_wrist_point()
+                if wrist_point and is_point_in_rect(wrist_point, box_rect):
                     self.all_visible_parts[i].set_status_as_in_box()
                     self.active_wrist = None
 
@@ -197,13 +200,18 @@ class WorkPlace:
                 if dist < 100:
                     self.all_visible_parts[i].set_status_as_moved()
                     self.part_tracker.del_tracker(self.all_visible_parts[i].part)
-                    self.active_wrist = nearest_wrist
+                    pack_task = [pack_task_item for pack_task_item in self.cur_pack_task if pack_task_item.part is tracked_part_detection.part][0]
+                    self.active_wrist = nearest_wrist, pack_task
+
+                    self.animator.generate_animation(self.generate_color_by_index(pack_task.index), (255, 255, 255))
 
     def get_active_wrist_point(self):
         if not self.active_wrist:
-            return None
-        point = self.worker_hands.points[self.active_wrist]
-        return point if point else (-10, -10)
+            return None, None
+        wrist_point = self.worker_hands.points[self.active_wrist[0]]
+        pack_task = self.active_wrist[1]
+
+        return (wrist_point, pack_task) if wrist_point else (None, None)
 
     def update_undetected_pack_items(self):
         not_detected_parts = [pack_task_item.part for pack_task_item in self.cur_pack_task if
@@ -297,6 +305,8 @@ class WorkPlace:
         return frame
 
     def generate_color_by_index(self, index):
+        if index is None:
+            return None
         tasks_num = len(self.cur_pack_task)
         color_step = int(255 / (tasks_num / 3))
         bgr = 255, 255, 255
@@ -341,12 +351,12 @@ class WorkPlace:
             self.show_after_completion = False
 
     def detect_opened_boxes(self, frame, opened_box_detections):
-        pack_box = self.get_pack_box_from_boxes(opened_box_detections, PackBox.statuses['Opened'], 0.30, None)
+        pack_box = self.get_pack_box_from_boxes(opened_box_detections, PackBox.statuses['Opened'], 0.40, None)
         return self.opened_box_tracker.track(frame, pack_box)
 
     def detect_closed_boxes(self, frame, closed_box_detections):
         pack_box = self.get_pack_box_from_boxes(closed_box_detections, PackBox.statuses['Closed'], 0.40,
-                                                self.box_detection.object_shape.box_rect_center, distance=150)
+                                                self.box_detection.object_shape.box_rect_center, distance=200)
         return self.closed_box_tracker.track(frame, pack_box)
 
     def get_pack_box_from_boxes(self, box_detections, status, probability, reference, distance=math.inf):
@@ -354,20 +364,19 @@ class WorkPlace:
                                  self.is_rect_in_work_place(detection[2])]
         pack_box = []
         if opened_box_detections:
-            opened_box_detections = [(box_detection[1], self.transform_coords_in_work_place_axis(box_detection[2])) for
+            opened_box_detections = [(box_detection[1], self.transform_coords_from_whole_frame_to_work_place_axis(box_detection[2])) for
                                      box_detection in opened_box_detections]
             opened_box_detections = [(box_dect[0], ObjectShape(box_dect[1])) for box_dect in opened_box_detections]
 
             if reference:
-                for bx in opened_box_detections:
-                    print('dist',
-                          dist.cdist([bx[1].box_rect_center], [self.box_detection.object_shape.box_rect_center]))
+                # for bx in opened_box_detections:
+                #     print('dist',
+                #           dist.cdist([bx[1].box_rect_center], [self.box_detection.object_shape.box_rect_center]))
 
                 opened_box_detections = [(prob, shape) for prob, shape in opened_box_detections
                                          if dist.cdist([shape.box_rect_center],
                                                        [self.box_detection.object_shape.box_rect_center])[0][
                                              0] < distance]
-                print(opened_box_detections)
             if opened_box_detections:
                 best_box_detection = max(opened_box_detections, key=lambda detection: detection[0])
                 if best_box_detection[0] > probability:
@@ -375,20 +384,29 @@ class WorkPlace:
         return pack_box
 
     def is_rect_in_work_place(self, rect):
-        tb = self.rect_work_place_corners
+        wp = self.rect_work_place_corners
 
         xs = rect[0] - rect[2] / 2, rect[0] + rect[2] / 2
         ys = rect[1] - rect[3] / 2, rect[1] + rect[3] / 2
-        return all([tb['tl'][0] <= x <= tb['br'][0] for x in xs]) and all([tb['tl'][1] <= y <= tb['br'][1] for y in ys])
+        return all([wp['tl'][0] <= x <= wp['br'][0] for x in xs]) and all([wp['tl'][1] <= y <= wp['br'][1] for y in ys])
 
     def is_point_in_work_place(self, point):
         tb = self.rect_work_place_corners
         return is_num_in_range(point[0], (tb['tl'][0], tb['br'][0])) and is_num_in_range(point[1],
                                                                                          (tb['tl'][1], tb['br'][1]))
 
-    def transform_coords_in_work_place_axis(self, rect):
-        tb = self.rect_work_place_corners
-        new_rect = (rect[0] - tb['tl'][0], rect[1] - tb['tl'][1], *rect[2:])
+    def transform_coords_from_whole_frame_to_work_place_axis(self, rect):
+        if not rect:
+            return None
+        wp = self.rect_work_place_corners
+        new_rect = (rect[0] - wp['tl'][0], rect[1] - wp['tl'][1], *rect[2:])
+        return new_rect
+
+    def transform_coords_from_work_place_axis_to_whole_frame(self, rect):
+        if not rect:
+            return None
+        wp = self.rect_work_place_corners
+        new_rect = (rect[0] + wp['tl'][0], rect[1] + wp['tl'][1], *rect[2:])
         return new_rect
 
     def detect_boxes(self, frame, boxes_detections):
@@ -412,10 +430,17 @@ class WorkPlace:
                 self.pack_task_completed = True
 
     def visualize_hand_detections(self, frame):
-        frame = self.get_work_place_view_from_frame(frame)
-        self.worker_hands.draw_skeleton(frame)
-        if self.active_wrist:
-            cv2.circle(frame, self.get_active_wrist_point(), 10, (0, 255, 255), -1)
+        table_area_frame = self.get_work_place_view_from_frame(frame)
+        self.worker_hands.draw_skeleton(table_area_frame)
+        wrist_point, pack_task = self.get_active_wrist_point()
+
+        if self.animator.is_animation_not_finished():
+            wrist_point = self.transform_coords_from_work_place_axis_to_whole_frame(wrist_point)
+            label_point = pack_task.print_pos if pack_task else None
+            self.animator.play_animation(frame, wrist_point, label_point)
+        if wrist_point:
+            color = self.generate_color_by_index(pack_task.index)
+            cv2.circle(table_area_frame, wrist_point, 10, color, -1)
 
     def detect_hands(self, hands_detections):
         for hands_detection in hands_detections:

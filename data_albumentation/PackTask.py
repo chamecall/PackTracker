@@ -25,7 +25,7 @@ class PackTask:
     def get_pack_tasks(db: DataBase, cur_time, packWorker):
 
         data = db.get_by_time_by_name(cur_time, packWorker)
-
+        print(data)
         pack_tasks = []
         dl_class = []
         cur_task_time, next_task_time = None, None

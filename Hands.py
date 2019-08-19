@@ -7,7 +7,7 @@ class Hands:
         ['Neck', 'RShoulder'], ['Neck', 'LShoulder'], ['RShoulder', 'RElbow'], ['LShoulder', 'LElbow'],
         ['RElbow', 'RWrist'], ['LElbow', 'LWrist'])
 
-    def __init__(self, tl_bounding_point):
+    def __init__(self, tl_bounding_point=(0, 0)):
         self.l_wrist_point = ()
         self.r_wrist_point = ()
         self.points = {}

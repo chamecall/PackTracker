@@ -25,7 +25,6 @@ class PackTask:
 
     @staticmethod
     def get_pack_tasks(db: DataBase, cur_time, pack_worker):
-
         data = db.get_by_time_by_name(cur_time, pack_worker)
         pack_tasks = []
         cur_task_time, next_task_time = None, None
@@ -36,7 +35,7 @@ class PackTask:
             if item['Date'] != cur_task_time:
                 next_task_time = item['Date']
                 break
-
+            print(item)
             part = Part(item['Products'].split(',')[1], int(item['Length']), int(item['Depth']), int(item['Height']),
                         int(item['ProductsCount']), item['№Pack'])
             pack_tasks.append(PackTask(part, int(item['ProductsCount']), i, item['Class']), )

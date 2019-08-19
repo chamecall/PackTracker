@@ -7,7 +7,7 @@ class DataBase:
         self.db_name = 'db.json'
         is_db_exist = path.exists(self.db_name)
         self.db = TinyDB(self.db_name)
-        self.file_name = 'db.txt'
+        self.file_name = 'db_rus.txt'
         self.encoding = 'utf-8'
         self.file = None
         self.sort_field = None

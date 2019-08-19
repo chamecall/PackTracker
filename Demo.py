@@ -99,11 +99,11 @@ while True:
     captured, frame = camera.read()
     if not captured:
         break
-    box_detections = []
-    part_detections = []
+
     hands_detections = hand_detector.read()
     box_detections = box_detector.get_detections_per_frame()
     part_detections = part_detector.get_detections_per_frame()
+    print(part_detections)
 
     for work_place in work_places:
         if work_place.next_pack_task_time and \
