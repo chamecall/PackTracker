@@ -42,9 +42,9 @@ def initialize_work_places():
         work_place.set_cur_pack_task(task)
         work_place.set_next_pack_task_time(format_time_from_str(next_task_time))
 
-    work_places = (WorkPlace('Муртазин Руслан Минислямович', ((560, 100), (1072, 100), (1057, 978), (502, 958)), 'Left',
+    work_places = (WorkPlace('Murtazin Ruslan Inislamic', ((560, 100), (1072, 100), (1057, 978), (502, 958)), 'Left',
                              frame_size=(1920, 1080)),
-                   WorkPlace('Бакшеев Александр Николаевич', ((1150, 100), (1605, 100), (1627, 1061), (1150, 1043)),
+                   WorkPlace('Baksheev Alexander Nikolaevich', ((1150, 100), (1605, 100), (1627, 1061), (1150, 1043)),
                              'Right', frame_size=(1920, 1080))
                    )
 
@@ -103,7 +103,6 @@ while True:
     hands_detections = hand_detector.read()
     box_detections = box_detector.get_detections_per_frame()
     part_detections = part_detector.get_detections_per_frame()
-    print(part_detections)
 
     for work_place in work_places:
         if work_place.next_pack_task_time and \

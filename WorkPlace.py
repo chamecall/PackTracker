@@ -276,7 +276,7 @@ class WorkPlace:
         def draw_name_info(x, y, name, pack_number, color):
             font = WorkPlace.large_font
             color = (0, 255, 0) if self.pack_task_completed else color
-            draw.text((x, y), f"{name} - упаковка №{pack_number}", color, font=font)
+            draw.text((x, y), f"Task #{pack_number}", color, font=font)
 
         x_value, y_value = None, None
         if self.packing_side == 'Left':
